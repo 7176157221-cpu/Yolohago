@@ -751,6 +751,23 @@ async function loadChat() {
   const seen = new Set();
   convos = convos.filter(c=>{if(seen.has(c.id))return false;seen.add(c.id);return true;});
   convos.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  // Filtrar chats que este usuario ocultó (salvo que tengan mensajes nuevos después de ocultarlos)
+  const {data:ocultos} = await sb.from('chats_ocultos').select('conversacion_id,oculto_desde').eq('usuario_id',G.u.id);
+  if(ocultos && ocultos.length>0){
+    const mapaOcultos = {};
+    ocultos.forEach(o=>mapaOcultos[o.conversacion_id]=o.oculto_desde);
+    const convosVisibles = [];
+    for(const c of convos){
+      const ocultoDesde = mapaOcultos[c.id];
+      if(!ocultoDesde){ convosVisibles.push(c); continue; }
+      const {data:nuevos} = await sb.from('mensajes').select('id').eq('conversacion_id',c.id).neq('autor_id',G.u.id).gt('created_at',ocultoDesde).limit(1);
+      if(nuevos && nuevos.length>0){
+        convosVisibles.push(c);
+        await sb.from('chats_ocultos').delete().eq('usuario_id',G.u.id).eq('conversacion_id',c.id);
+      }
+    }
+    convos = convosVisibles;
+  }
   if(convos.length===0){cvl.innerHTML='<div class="loading" style="font-size:12px;padding:1rem">No tienes conversaciones aún.</div>';return;}
   // Traer nombres de los otros usuarios
   const otrosIds = convos.map(c=> c.interesado_id===G.u.id ? c.cliente_id : c.interesado_id).filter(Boolean);
@@ -909,10 +926,20 @@ async function renderMensajes(id) {
 }
 
 async function borrarChat(convoId) {
-  if(!confirm('¿Borrar esta conversación completa? Se eliminarán todos los mensajes y no podrás recuperarla.')) return;
-  await sb.from('conversaciones').delete().eq('id',convoId);
+  const esAdmin = G.u.email===ADMIN_EMAIL;
+  if(esAdmin) {
+    if(!confirm('Como administrador, esto BORRARÁ la conversación para AMBAS personas de forma permanente (úsalo solo para moderación). ¿Continuar?')) return;
+    await sb.from('conversaciones').delete().eq('id',convoId);
+  } else {
+    if(!confirm('¿Ocultar esta conversación? Desaparecerá de tu lista. Si te llega un mensaje nuevo, volverás a verla.')) return;
+    // Ocultar solo para este usuario (no borra para el otro)
+    await sb.from('chats_ocultos').upsert({usuario_id:G.u.id, conversacion_id:convoId, oculto_desde:new Date().toISOString()}, {onConflict:'usuario_id,conversacion_id'});
+  }
   G.activeConvo=null;
+  if(G.msgChannel){ sb.removeChannel(G.msgChannel); G.msgChannel=null; }
   document.getElementById('cm').innerHTML='<div style="display:flex;align-items:center;justify-content:center;flex:1;color:var(--t3);font-size:13px;padding:2rem">Selecciona una conversación</div>';
+  const cshell=document.getElementById('cshell');
+  if(cshell){cshell.classList.remove('ver-chat');cshell.classList.add('ver-lista');}
   loadChat();
 }
 
