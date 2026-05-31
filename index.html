@@ -160,6 +160,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .cshell.ver-chat .csb{display:none}
   .cshell.ver-chat .cmain{display:flex}
   .cshell:not(.ver-lista):not(.ver-chat) .cmain{display:none}
+  /* Panel admin: tablas con scroll horizontal para ver todas las columnas */
+  .tw{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+  table{min-width:560px}
+  .act{padding:5px 9px;font-size:11px;margin-bottom:3px;display:inline-block}
+  .tabr{overflow-x:auto;flex-wrap:nowrap}
+  .tab{flex-shrink:0}
 }
 .btn-volver-lista{display:none}
 @media(max-width:600px){.cshell.ver-chat .btn-volver-lista{display:inline-flex}}
@@ -200,6 +206,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
   <div class="divl"></div>
   <div class="slbl">Proveedores activos</div>
   <div class="pgrid" id="fpr"><div class="loading"><span class="spin"></span>Cargando proveedores...</div></div>
+  <div class="divl"></div>
+  <div class="slbl">⭐ Reseñas y calificaciones</div>
+  <div id="freviews"><div class="loading"><span class="spin"></span>Cargando reseñas...</div></div>
 </div>
 
 <!-- PUBLICAR (elegir) -->
@@ -551,6 +560,27 @@ async function loadHome() {
       </div>`).join('');
   } else {
     fpr.innerHTML = '<div class="loading">Aún no hay proveedores activos.</div>';
+  }
+
+  // Reseñas y calificaciones recientes
+  const fr = document.getElementById('freviews');
+  if(fr){
+    const {data:reviews} = await sb.from('resenas').select('*').order('created_at',{ascending:false}).limit(10);
+    if(reviews && reviews.length>0){
+      fr.innerHTML = reviews.map(r=>`
+        <div class="fc" style="margin-bottom:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:9px">
+              <div class="av alg">${ini(r.calificado_nombre||'P')}</div>
+              <div><div style="font-size:13px;font-weight:500;color:var(--t)">${r.calificado_nombre||'Proveedor'}</div><div style="font-size:11px;color:var(--t3)">${timeAgo(r.created_at)}</div></div>
+            </div>
+            <span class="stars" style="font-size:14px">${'★'.repeat(r.estrellas)}${'☆'.repeat(5-r.estrellas)}</span>
+          </div>
+          ${r.comentario?`<div style="font-size:13px;color:var(--t2);line-height:1.5">"${r.comentario}"</div>`:'<div style="font-size:12px;color:var(--t3);font-style:italic">Sin comentario</div>'}
+        </div>`).join('');
+    } else {
+      fr.innerHTML = '<div class="loading">Aún no hay reseñas. Las calificaciones aparecerán aquí cuando se completen trabajos.</div>';
+    }
   }
 }
 
@@ -1137,33 +1167,42 @@ async function subRev() {
   const txt=document.getElementById('rvt').value;
   if(!G.star||!amt){alert('Completa la calificación y el monto.');return;}
   const comm=Math.round(parseFloat(amt)*0.05);
-  const {data:conv} = await sb.from('conversaciones').select('proveedor_id,interesado_id,cliente_id').eq('id',G.reviewConvoId).single();
+  const {data:conv} = await sb.from('conversaciones').select('proveedor_id,interesado_id,cliente_id,pedido_id,titulo_ref').eq('id',G.reviewConvoId).single();
   if(conv) {
     const provId = conv.proveedor_id;
-    // La persona que prestó el servicio: si hay proveedor registrado úsalo; si no, es el interesado
-    const calificadoUserId = conv.interesado_id;
+    // Quien PRESTÓ el servicio: en un pedido es el interesado (quien respondió); en un servicio ofrecido es el dueño del servicio (cliente_id de la conversa apunta al proveedor)
+    const esPedido = !!conv.pedido_id;
+    const calificadoUserId = esPedido ? conv.interesado_id : conv.cliente_id;
+    // Traer nombre del calificado
+    let calNombre = 'Proveedor';
+    if(calificadoUserId){
+      const {data:cu} = await sb.from('usuarios').select('nombre,apellidos').eq('id',calificadoUserId).maybeSingle();
+      if(cu) calNombre = `${cu.nombre||''} ${cu.apellidos||''}`.trim();
+    }
     try {
-      if(provId) {
-        const {data:res} = await sb.from('resenas').insert({proveedor_id:provId,cliente_id:G.u.id,estrellas:G.star,comentario:txt,monto_pagado:parseFloat(amt)}).select().single();
+      const resData = {cliente_id:G.u.id,estrellas:G.star,comentario:txt,monto_pagado:parseFloat(amt),calificado_id:calificadoUserId,calificado_nombre:calNombre};
+      if(provId) resData.proveedor_id = provId;
+      const {data:res} = await sb.from('resenas').insert(resData).select().single();
+      // Comisión
+      if(provId){
         if(res) await sb.from('comisiones').insert({proveedor_id:provId,resena_id:res.id,monto:comm,status:'pendiente'});
-        // Recalcular rating promedio del proveedor
         const {data:todas} = await sb.from('resenas').select('estrellas').eq('proveedor_id',provId);
         if(todas && todas.length>0){
           const prom = todas.reduce((a,r)=>a+r.estrellas,0)/todas.length;
           await sb.from('proveedores').update({rating:Math.round(prom*10)/10, total_reviews:todas.length}).eq('id',provId);
         }
       } else {
-        // Pedido entre usuarios: registrar reseña sin proveedor y la comisión igual
-        await sb.from('resenas').insert({cliente_id:G.u.id,estrellas:G.star,comentario:txt,monto_pagado:parseFloat(amt)});
         await sb.from('comisiones').insert({monto:comm,status:'pendiente'});
       }
     } catch(e){ console.log('Error guardando reseña:',e); }
     await sb.from('conversaciones').update({status:'completada',monto_acordado:parseFloat(amt)}).eq('id',G.reviewConvoId);
+    // Marcar el pedido como resuelto y guardar quién lo contrató (aunque califiques desde el chat)
+    const pedidoAMarcar = G.reviewPedidoId || conv.pedido_id;
+    if(pedidoAMarcar){
+      await sb.from('pedidos').update({status:'resuelto', contratado_nombre:calNombre}).eq('id',pedidoAMarcar);
+    }
   }
-  if(G.reviewPedidoId) {
-    await sb.from('pedidos').update({status:'resuelto'}).eq('id',G.reviewPedidoId);
-    G.reviewPedidoId=null;
-  }
+  G.reviewPedidoId=null;
   // Limpiar formulario
   G.star=0;
   document.querySelectorAll('.stb').forEach(b=>b.classList.remove('lit'));
