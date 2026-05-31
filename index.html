@@ -567,17 +567,21 @@ async function loadHome() {
   if(fr){
     const {data:reviews} = await sb.from('resenas').select('*').order('created_at',{ascending:false}).limit(10);
     if(reviews && reviews.length>0){
-      fr.innerHTML = reviews.map(r=>`
+      const esAdmin = G.u && G.u.email===ADMIN_EMAIL;
+      fr.innerHTML = reviews.map(r=>{
+        const puedeBorrar = esAdmin || (G.u && r.cliente_id===G.u.id);
+        return `
         <div class="fc" style="margin-bottom:10px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
             <div style="display:flex;align-items:center;gap:9px">
               <div class="av alg">${ini(r.calificado_nombre||'P')}</div>
-              <div><div style="font-size:13px;font-weight:500;color:var(--t)">${r.calificado_nombre||'Proveedor'}</div><div style="font-size:11px;color:var(--t3)">${timeAgo(r.created_at)}</div></div>
+              <div><div style="font-size:13px;font-weight:500;color:var(--t)">${r.calificado_nombre||'Proveedor'}</div><div style="font-size:11px;color:var(--t3)">Calificado por ${r.calificador_nombre||'un cliente'} · ${timeAgo(r.created_at)}</div></div>
             </div>
             <span class="stars" style="font-size:14px">${'★'.repeat(r.estrellas)}${'☆'.repeat(5-r.estrellas)}</span>
           </div>
           ${r.comentario?`<div style="font-size:13px;color:var(--t2);line-height:1.5">"${r.comentario}"</div>`:'<div style="font-size:12px;color:var(--t3);font-style:italic">Sin comentario</div>'}
-        </div>`).join('');
+          ${puedeBorrar?`<div style="margin-top:8px;text-align:right"><button class="btn bsm" style="color:var(--red);border-color:var(--red)" onclick="borrarResena('${r.id}')">Eliminar reseña</button></div>`:''}
+        </div>`;}).join('');
     } else {
       fr.innerHTML = '<div class="loading">Aún no hay reseñas. Las calificaciones aparecerán aquí cuando se completen trabajos.</div>';
     }
@@ -1162,6 +1166,20 @@ function setStar(n) {
   document.querySelectorAll('.stb').forEach((b,i)=>b.classList.toggle('lit',i<n));
 }
 
+async function borrarResena(id){
+  const esAdmin = G.u && G.u.email===ADMIN_EMAIL;
+  if(!confirm('¿Eliminar esta reseña? Esta acción no se puede deshacer.')) return;
+  // Si tiene proveedor, recalcular su rating después de borrar
+  const {data:r} = await sb.from('resenas').select('proveedor_id').eq('id',id).maybeSingle();
+  await sb.from('resenas').delete().eq('id',id);
+  if(r && r.proveedor_id){
+    const {data:todas} = await sb.from('resenas').select('estrellas').eq('proveedor_id',r.proveedor_id);
+    const prom = (todas&&todas.length>0)? todas.reduce((a,x)=>a+x.estrellas,0)/todas.length : 0;
+    await sb.from('proveedores').update({rating:Math.round(prom*10)/10, total_reviews:(todas?todas.length:0)}).eq('id',r.proveedor_id);
+  }
+  loadHome();
+}
+
 async function subRev() {
   const amt=document.getElementById('rva').value;
   const txt=document.getElementById('rvt').value;
@@ -1179,8 +1197,12 @@ async function subRev() {
       const {data:cu} = await sb.from('usuarios').select('nombre,apellidos').eq('id',calificadoUserId).maybeSingle();
       if(cu) calNombre = `${cu.nombre||''} ${cu.apellidos||''}`.trim();
     }
+    // Nombre de quien califica (yo)
+    let miNombre = 'Usuario';
+    const {data:yo} = await sb.from('usuarios').select('nombre,apellidos').eq('id',G.u.id).maybeSingle();
+    if(yo) miNombre = `${yo.nombre||''} ${yo.apellidos||''}`.trim();
     try {
-      const resData = {cliente_id:G.u.id,estrellas:G.star,comentario:txt,monto_pagado:parseFloat(amt),calificado_id:calificadoUserId,calificado_nombre:calNombre};
+      const resData = {cliente_id:G.u.id,estrellas:G.star,comentario:txt,monto_pagado:parseFloat(amt),calificado_id:calificadoUserId,calificado_nombre:calNombre,calificador_nombre:miNombre};
       if(provId) resData.proveedor_id = provId;
       const {data:res} = await sb.from('resenas').insert(resData).select().single();
       // Comisión
@@ -1219,7 +1241,7 @@ async function loadAdmin() {
   const [{data:provs},{data:peds},{data:cms},{data:acuerdos},{data:usuarios}] = await Promise.all([
     sb.from('proveedores').select('*'),
     sb.from('pedidos').select('*,usuarios(nombre,apellidos,email,whatsapp)'),
-    sb.from('comisiones').select('*,proveedores(nombre,usuario_id),resenas(monto_pagado)'),
+    sb.from('comisiones').select('*,proveedores(nombre,usuario_id),resenas(monto_pagado,calificado_nombre)'),
     sb.from('conversaciones').select('*,proveedores(nombre),interesado:interesado_id(nombre,apellidos,email,whatsapp),cliente:cliente_id(nombre,apellidos,email,whatsapp),pedidos(titulo)').not('monto_acordado','is',null).order('created_at',{ascending:false}),
     sb.from('usuarios').select('*').order('created_at',{ascending:false})
   ]);
@@ -1307,7 +1329,7 @@ function atab(t,btn,provs,peds,cms,acuerdos) {
       </div>
       <div class="tw"><div class="th2">Registro de comisiones</div>
         ${(cms||[]).map((cm,i)=>`<div class="crow">
-          <div><div style="font-size:13px;font-weight:500;color:var(--t)">${cm.proveedores?.nombre||'Proveedor'}</div>
+          <div><div style="font-size:13px;font-weight:500;color:var(--t)">${cm.proveedores?.nombre||cm.resenas?.calificado_nombre||'Servicio entre usuarios'}</div>
           <div style="font-size:12px;color:var(--t3)">S/ ${cm.resenas?.monto_pagado||'?'} cobrado · ${timeAgo(cm.created_at)}</div></div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
             <div style="text-align:right"><div style="font-size:16px;font-weight:500;color:var(--g)">S/ ${cm.monto}</div>
