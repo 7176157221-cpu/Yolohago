@@ -762,8 +762,9 @@ async function loadChat() {
       if(!ocultoDesde){ convosVisibles.push(c); continue; }
       const {data:nuevos} = await sb.from('mensajes').select('id').eq('conversacion_id',c.id).neq('autor_id',G.u.id).gt('created_at',ocultoDesde).limit(1);
       if(nuevos && nuevos.length>0){
+        // Reaparece, pero conservamos la fecha de corte para mostrar solo lo nuevo
+        c._ocultoDesde = ocultoDesde;
         convosVisibles.push(c);
-        await sb.from('chats_ocultos').delete().eq('usuario_id',G.u.id).eq('conversacion_id',c.id);
       }
     }
     convos = convosVisibles;
@@ -870,7 +871,12 @@ async function renderMensajes(id) {
   // Traer la conversación fresca (por si el monto_acordado cambió al aceptar un trato)
   const {data:convFresca} = await sb.from('conversaciones').select('*').eq('id',id).single();
   if(convFresca){ conv = convFresca; if(G.convData) G.convData.conv = convFresca; }
-  const {data:msgs} = await sb.from('mensajes').select('*').eq('conversacion_id',id).order('created_at',{ascending:true});
+  let {data:msgs} = await sb.from('mensajes').select('*').eq('conversacion_id',id).order('created_at',{ascending:true});
+  // Si este usuario ocultó el chat antes, mostrar solo mensajes posteriores a esa fecha
+  const {data:oc} = await sb.from('chats_ocultos').select('oculto_desde').eq('usuario_id',G.u.id).eq('conversacion_id',id).maybeSingle();
+  if(oc && oc.oculto_desde){
+    msgs = (msgs||[]).filter(m=> new Date(m.created_at) > new Date(oc.oculto_desde));
+  }
   const nombreOtro = otro ? (otro.nombre||'Usuario') : 'Usuario';
   const cm = document.getElementById('cm');
   const hayAcuerdo = conv && conv.monto_acordado != null;
