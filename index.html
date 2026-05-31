@@ -400,6 +400,17 @@ async function init() {
   if(session) {
     G.session = session;
     G.u = session.user;
+    // Si la cuenta fue bloqueada, cerrar sesión
+    if(G.u.email !== ADMIN_EMAIL){
+      const {data:u} = await sb.from('usuarios').select('bloqueado').eq('id',G.u.id).maybeSingle();
+      if(u && u.bloqueado){
+        await sb.auth.signOut();
+        G.u=null; G.session=null;
+        updateNav(); loadHome();
+        alert('Tu cuenta ha sido suspendida. Contacta al administrador de YoLoHago.');
+        return;
+      }
+    }
     updateNav();
     suscribirMensajesGlobal();
     if(G.u.email === ADMIN_EMAIL) { go('admin'); }
@@ -619,8 +630,18 @@ async function doLogin() {
   if(!e||!p){err.textContent='Completa todos los campos.';err.style.display='block';return;}
   btn.textContent='Ingresando...';btn.disabled=true;
   const {data,error} = await sb.auth.signInWithPassword({email:e,password:p});
+  if(error){btn.textContent='Ingresar';btn.disabled=false;err.textContent='Email o contraseña incorrectos.';err.style.display='block';return;}
+  // Verificar si la cuenta está bloqueada (salvo el admin)
+  if(e!==ADMIN_EMAIL){
+    const {data:u} = await sb.from('usuarios').select('bloqueado').eq('id',data.user.id).maybeSingle();
+    if(u && u.bloqueado){
+      await sb.auth.signOut();
+      btn.textContent='Ingresar';btn.disabled=false;
+      err.textContent='Tu cuenta ha sido suspendida. Contacta al administrador de YoLoHago.';err.style.display='block';
+      return;
+    }
+  }
   btn.textContent='Ingresar';btn.disabled=false;
-  if(error){err.textContent='Email o contraseña incorrectos.';err.style.display='block';return;}
   G.u=data.user;G.session=data.session;
   updateNav();
   if(e===ADMIN_EMAIL) go('admin');
@@ -1264,14 +1285,16 @@ function atab(t,btn,provs,peds,cms,acuerdos) {
     const us = G.adminUsuarios||[];
     c.innerHTML=`<div class="tw"><div class="th2">Usuarios registrados (${us.length})</div>
       ${us.length===0?'<div class="loading" style="padding:1.5rem">Aún no hay usuarios registrados.</div>':
-      `<table><thead><tr><th>Nombre</th><th>Correo</th><th>WhatsApp</th><th>Registrado</th></tr></thead>
+      `<table><thead><tr><th>Nombre</th><th>Correo</th><th>WhatsApp</th><th>Estado</th><th>Acciones</th></tr></thead>
       <tbody>${us.map(u=>`<tr>
         <td style="font-weight:500">${u.nombre||'?'} ${u.apellidos||''}</td>
         <td style="color:var(--t2)">${u.email||'—'}</td>
         <td style="color:var(--t2)">${u.whatsapp||'—'}</td>
-        <td style="color:var(--t3)">${u.created_at?timeAgo(u.created_at):'—'}</td>
+        <td>${u.bloqueado?'<span class="pill pr_">bloqueado</span>':'<span class="pill pg_">activo</span>'}</td>
+        <td><button class="act" onclick="verUsuario('${u.id}')">Ver</button>${u.bloqueado?`<button class="act actg" onclick="desbloquearUsuario('${u.id}')">Desbloquear</button>`:`<button class="act actr" onclick="bloquearUsuario('${u.id}')">Bloquear</button>`}</td>
       </tr>`).join('')}</tbody></table>`}
-      </div>`;
+      </div>
+      <div id="detalle-usuario"></div>`;
   } else if(t==='a'){
     c.innerHTML=`<div class="af">
       <div style="font-size:13px;font-weight:500;color:var(--t);margin-bottom:1rem">Agregar proveedor manualmente</div>
@@ -1313,6 +1336,46 @@ async function mNoPagado(id, provUserId){
 }
 async function delComision(id){if(!confirm('¿Eliminar este registro de comisión? Esta acción no se puede deshacer.'))return;await sb.from('comisiones').delete().eq('id',id);loadAdmin();}
 async function delAcuerdo(id){if(!confirm('¿Eliminar este acuerdo del registro? Se borrará la conversación asociada. Esta acción no se puede deshacer.'))return;await sb.from('conversaciones').delete().eq('id',id);loadAdmin();}
+
+async function bloquearUsuario(id){
+  if(!confirm('¿Bloquear esta cuenta? El usuario no podrá iniciar sesión en la app hasta que lo desbloquees.'))return;
+  await sb.from('usuarios').update({bloqueado:true}).eq('id',id);
+  await sb.from('notificaciones').insert({usuario_id:id,tipo:'bloqueo',mensaje:'⚠️ Tu cuenta ha sido suspendida por el administrador de YoLoHago. Contacta para regularizar tu situación.'});
+  loadAdmin();
+}
+async function desbloquearUsuario(id){
+  await sb.from('usuarios').update({bloqueado:false}).eq('id',id);
+  loadAdmin();
+}
+async function verUsuario(id){
+  const cont=document.getElementById('detalle-usuario');
+  if(!cont)return;
+  cont.innerHTML='<div class="loading" style="padding:1rem"><span class="spin"></span>Cargando detalle...</div>';
+  const u=(G.adminUsuarios||[]).find(x=>x.id===id);
+  // Trabajos completados como proveedor/prestador (conversaciones completadas donde participó)
+  const [r1,r2] = await Promise.all([
+    sb.from('conversaciones').select('id,status,monto_acordado').eq('interesado_id',id),
+    sb.from('conversaciones').select('id,status,monto_acordado').eq('cliente_id',id)
+  ]);
+  const todas=[...(r1.data||[]),...(r2.data||[])];
+  const completados=todas.filter(c=>c.status==='completada').length;
+  // Cuánto debe: comisiones pendientes de sus servicios como proveedor
+  const {data:provs}=await sb.from('proveedores').select('id').eq('usuario_id',id);
+  let debe=0;
+  if(provs && provs.length>0){
+    const provIds=provs.map(p=>p.id);
+    const {data:coms}=await sb.from('comisiones').select('monto,status').in('proveedor_id',provIds);
+    debe=(coms||[]).filter(c=>c.status==='pendiente'||c.status==='no_pagado').reduce((a,c)=>a+c.monto,0);
+  }
+  cont.innerHTML=`<div class="tw" style="margin-top:1rem"><div class="th2">Detalle: ${u?.nombre||''} ${u?.apellidos||''}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:1rem">
+      <div class="sc"><div class="scl">Trabajos completados</div><div class="scv">${completados}</div><div class="scs sg">en la plataforma</div></div>
+      <div class="sc"><div class="scl">Comisiones por pagar</div><div class="scv" style="color:${debe>0?'var(--amb)':'var(--g)'}">S/ ${debe}</div><div class="scs ${debe>0?'sa':'sg'}">${debe>0?'pendiente':'al día'}</div></div>
+    </div>
+    <div style="padding:0 1rem 1rem;font-size:12px;color:var(--t3)">📧 ${u?.email||'—'} · 📱 ${u?.whatsapp||'—'}</div>
+  </div>`;
+  cont.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
 async function delProv(id){if(!confirm('¿Eliminar este proveedor para siempre? Se borrarán también sus chats. Esta acción no se puede deshacer.'))return;await sb.from('proveedores').delete().eq('id',id);loadAdmin();}
 async function delPed(id){if(!confirm('¿Eliminar este anuncio para siempre? Se borrarán también todos sus chats. Esta acción no se puede deshacer.'))return;await sb.from('pedidos').delete().eq('id',id);loadAdmin();}
 
