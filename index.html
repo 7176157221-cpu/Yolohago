@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YoLoHago — Servicios locales en Chachapoyas</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0a0a;--bg2:#111;--bg3:#1a1a1a;--bg4:#222;--bd:#2a2a2a;--bd2:#333;--t:#f0f0f0;--t2:#999;--t3:#666;--g:#22c984;--g2:#1aa870;--g3:#0d6b47;--gbg:#0a2e1e;--red:#e24b4a;--rbg:#2a1010;--amb:#ef9f27;--abg:#2a1e08;--bl:#378add;--bbg:#0a1e2e}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--t);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background:url('https://fteginbfnfbrnpkzvduw.supabase.co/storage/v1/object/public/imagenes/Chachapoyas.jpg') center/cover no-repeat;opacity:.35}
+body::after{content:'';position:fixed;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(10,10,10,.55),rgba(10,10,10,.78))}
+.nav{background:rgba(17,17,17,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.logo{font-size:20px;font-weight:600;letter-spacing:-.5px;color:var(--t);cursor:pointer;display:flex;align-items:center;gap:6px;text-decoration:none}
+.logo-dot{width:8px;height:8px;background:var(--g);border-radius:50%}
+.logo em{font-style:normal;color:var(--g)}
+.nr{display:flex;align-items:center;gap:6px}
+@media(max-width:600px){
+  #hamb{display:block!important}
+  .nr{display:none;position:absolute;top:56px;right:0;left:0;flex-direction:column;align-items:stretch;background:rgba(17,17,17,.97);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);padding:10px;gap:4px;z-index:99}
+  .nr.abierto{display:flex}
+  .nr .nb{width:100%;text-align:left;padding:12px 14px;font-size:15px}
+}
+.nb{padding:7px 15px;border-radius:8px;font-size:13px;border:1px solid var(--bd2);background:none;color:var(--t2);cursor:pointer;transition:all .15s}
+.nb:hover{background:var(--bg3);color:var(--t)}
+.nb.s{background:var(--g);color:#000;border-color:var(--g);font-weight:500}
+.nb.s:hover{background:var(--g2)}
+.nb.gh{color:var(--t);border-color:var(--bd2)}
+.nb.gh:hover{background:var(--bg3)}
+.ndot{width:7px;height:7px;background:var(--red);border-radius:50%;position:absolute;top:-1px;right:-1px;border:1px solid var(--bg2)}
+.nrel{position:relative;display:inline-flex}
+.pg{display:none;padding:1.5rem;max-width:920px;margin:0 auto}
+.pg.on{display:block}
+.hero{text-align:center;padding:3rem 1rem 2rem}
+.htag{display:inline-flex;align-items:center;gap:5px;background:var(--gbg);color:var(--g);font-size:12px;padding:4px 12px;border-radius:999px;margin-bottom:1rem;border:1px solid var(--g3)}
+.hero h1{font-size:38px;font-weight:600;letter-spacing:-1.5px;line-height:1.15;color:var(--t);margin-bottom:.75rem}
+.hero h1 em{font-style:normal;color:var(--g)}
+.hero p{color:var(--t2);font-size:15px;max-width:400px;margin:0 auto 2rem;line-height:1.65}
+.hacts{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:440px;margin:0 auto 2rem}
+.hc{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:1.5rem;cursor:pointer;transition:all .2s;text-align:left}
+.hc:hover{border-color:var(--g);background:var(--bg3)}
+.hci{width:40px;height:40px;background:var(--gbg);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--g);font-size:22px;margin-bottom:.875rem}
+.hct{font-size:14px;font-weight:500;color:var(--t);margin-bottom:4px}
+.hcs{font-size:12px;color:var(--t2);line-height:1.45}
+.slbl{font-size:11px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
+.divl{height:1px;background:var(--bd);margin:2rem 0}
+.feed{display:grid;gap:10px;margin-bottom:2rem}
+.fc{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:1.25rem;transition:border-color .15s}
+.fc:hover{border-color:var(--bd2)}
+.fct{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:.75rem}
+.fctt{font-size:14px;font-weight:500;color:var(--t);margin-bottom:3px}
+.fcm{font-size:12px;color:var(--t3)}
+.fcd{font-size:13px;color:var(--t2);line-height:1.55;margin-bottom:1rem}
+.fcf{display:flex;align-items:center;justify-content:space-between}
+.fcu{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2)}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:500}
+.pg_{background:var(--gbg);color:var(--g);border:1px solid var(--g3)}
+.pa_{background:var(--abg);color:var(--amb)}
+.pr_{background:var(--rbg);color:var(--red)}
+.pp_{background:var(--bg3);color:var(--t3)}
+.av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex-shrink:0;background:var(--gbg);color:var(--g)}
+.alg{width:44px;height:44px;font-size:14px}
+.btn{padding:7px 16px;border-radius:8px;font-size:13px;border:1px solid var(--bd2);background:none;color:var(--t);cursor:pointer;transition:all .15s;font-weight:500}
+.btn:hover{background:var(--bg3)}
+.bg_{background:var(--g);color:#000;border-color:var(--g)}.bg_:hover{background:var(--g2)}
+.bog{color:var(--g);border-color:var(--g3);background:var(--gbg)}.bog:hover{background:var(--g3)}
+.bsm{padding:5px 13px;font-size:12px}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:2rem}
+.pc{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:1.125rem;transition:border-color .15s}
+.pc:hover{border-color:var(--bd2)}
+.stars{color:var(--amb);font-size:13px}
+.fw{max-width:480px;margin:0 auto}
+.fcard{background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:1.5rem}
+.ftit{font-size:18px;font-weight:500;color:var(--t);margin-bottom:4px}
+.fsub{font-size:13px;color:var(--t2);margin-bottom:1.5rem;line-height:1.55}
+.fg{margin-bottom:1rem}
+.fl{font-size:12px;color:var(--t2);display:block;margin-bottom:6px;font-weight:500}
+.fi{width:100%;padding:10px 13px;border:1px solid var(--bd2);border-radius:8px;font-size:13px;color:var(--t);background:var(--bg3);outline:none;transition:border-color .15s}
+.fi:focus{border-color:var(--g)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.trm{background:var(--bg3);border:1px solid var(--bd2);border-radius:10px;padding:1rem;margin-bottom:1rem;font-size:12px;color:var(--t2);line-height:1.65}
+.trm b{color:var(--t)}
+.fchk{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--t2);margin-bottom:1.25rem}
+.sok{background:var(--gbg);border:1px solid var(--g3);border-radius:10px;padding:.875rem 1rem;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--g);margin-bottom:1rem}
+.err{background:var(--rbg);border:1px solid var(--red);border-radius:10px;padding:.875rem 1rem;font-size:13px;color:var(--red);margin-bottom:1rem;display:none}
+.loading{text-align:center;padding:2rem;color:var(--t3);font-size:13px}
+.spin{display:inline-block;width:20px;height:20px;border:2px solid var(--bd2);border-top-color:var(--g);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.cshell{display:grid;grid-template-columns:260px 1fr;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;overflow:hidden;min-height:500px}
+.csb{border-right:1px solid var(--bd);display:flex;flex-direction:column}
+.csbh{padding:1rem 1.125rem;border-bottom:1px solid var(--bd);font-size:13px;font-weight:500;color:var(--t)}
+.cvo{padding:.75rem 1.125rem;display:flex;align-items:center;gap:9px;cursor:pointer;border-bottom:1px solid var(--bd);transition:background .1s}
+.cvo:hover,.cvo.on{background:var(--bg3)}
+.cvon{font-size:13px;font-weight:500;color:var(--t)}
+.cvop{font-size:12px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:155px}
+.unr{width:7px;height:7px;background:var(--g);border-radius:50%;flex-shrink:0;margin-left:auto}
+.cmain{display:flex;flex-direction:column;min-height:500px}
+.ctop{padding:.875rem 1.25rem;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
+.msgs{padding:1rem;display:flex;flex-direction:column;gap:8px;flex:1;overflow-y:auto;max-height:340px}
+.msg{max-width:70%;padding:9px 13px;font-size:13px;line-height:1.5;border-radius:16px;word-break:break-word}
+.mi{background:var(--bg3);color:var(--t);align-self:flex-start;border-radius:4px 16px 16px 16px}
+.mo{background:var(--g);color:#000;align-self:flex-end;border-radius:16px 4px 16px 16px}
+.mt{font-size:10px;margin-top:3px;opacity:.55}
+.msys{background:var(--bg3);border:1px solid var(--bd2);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--t2);text-align:center;align-self:center;max-width:90%}
+.dbox{background:var(--bg3);border:1px solid var(--bd2);border-radius:14px;padding:1.125rem;align-self:center;max-width:86%;width:100%}
+.dlbl{font-size:12px;color:var(--t2);margin-bottom:4px}
+.damt{font-size:24px;font-weight:600;color:var(--g);margin-bottom:.75rem}
+.cinpr{padding:.875rem 1.25rem;border-top:1px solid var(--bd);display:flex;gap:8px;align-items:center}
+.cinp{flex:1;padding:9px 13px;border:1px solid var(--bd2);border-radius:10px;font-size:13px;background:var(--bg3);color:var(--t);outline:none}
+.cinp:focus{border-color:var(--g)}
+.strow{display:flex;gap:5px;margin-bottom:.875rem}
+.stb{font-size:28px;color:var(--bd2);cursor:pointer;background:none;border:none;transition:color .1s;padding:0;line-height:1}
+.stb.lit{color:var(--amb)}
+.ash{background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:1.5rem;margin-bottom:1rem}
+.atop{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+.abadge{display:flex;align-items:center;gap:6px;background:var(--gbg);color:var(--g);font-size:12px;padding:4px 12px;border-radius:999px;border:1px solid var(--g3);font-weight:500}
+.s4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem}
+.sc{background:var(--bg3);border:1px solid var(--bd);border-radius:12px;padding:1rem}
+.scl{font-size:11px;color:var(--t3);margin-bottom:5px;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+.scv{font-size:24px;font-weight:600;color:var(--t)}
+.scs{font-size:11px;margin-top:3px}
+.sg{color:var(--g)}.sa{color:var(--amb)}
+.tabr{display:flex;gap:6px;margin-bottom:1.25rem;border-bottom:1px solid var(--bd);padding-bottom:.875rem;flex-wrap:wrap}
+.tab{padding:6px 14px;border-radius:8px;font-size:13px;border:1px solid transparent;cursor:pointer;background:none;color:var(--t2);transition:all .12s}
+.tab:hover{color:var(--t);background:var(--bg3)}
+.tab.on{background:var(--bg3);color:var(--t);border-color:var(--bd2);font-weight:500}
+.tw{border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:1.25rem}
+.th2{padding:.875rem 1.125rem;border-bottom:1px solid var(--bd);background:var(--bg3);font-size:13px;font-weight:500;color:var(--t)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:9px 1.125rem;text-align:left;font-size:11px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);background:var(--bg3)}
+td{padding:10px 1.125rem;border-bottom:1px solid var(--bd);color:var(--t);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.act{padding:4px 10px;border-radius:7px;font-size:11px;border:1px solid var(--bd2);background:none;color:var(--t2);cursor:pointer;transition:all .12s;margin-right:3px}
+.actg{color:var(--g);border-color:var(--g3)}.actg:hover{background:var(--gbg)}
+.actr:hover{background:var(--rbg);color:var(--red);border-color:var(--red)}
+.crow{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.125rem;border-bottom:1px solid var(--bd)}
+.crow:last-child{border-bottom:none}
+.mch{display:flex;align-items:flex-end;gap:5px;height:60px}
+.bar{background:var(--g3);border-radius:4px 4px 0 0;flex:1;transition:background .15s;cursor:pointer}
+.bar:hover{background:var(--g)}
+.chlbl{display:flex;gap:5px;margin-top:4px}
+.chlbl span{flex:1;text-align:center;font-size:10px;color:var(--t3)}
+.af{background:var(--bg3);border:1px solid var(--bd);border-radius:12px;padding:1.125rem;margin-bottom:1.25rem}
+.prof-sec{background:var(--bg3);border:1px solid var(--bd);border-radius:12px;padding:1.125rem;margin-bottom:1rem}
+.link-btn{background:none;border:none;color:var(--g);font-size:12px;cursor:pointer;padding:0;text-decoration:underline}
+@media(max-width:600px){
+  .hacts{grid-template-columns:1fr}.s4{grid-template-columns:1fr 1fr}.frow{grid-template-columns:1fr}
+  .cshell{grid-template-columns:1fr;position:relative;min-height:auto;height:calc(100vh - 150px)}
+  .cmain{min-height:auto;height:100%;max-width:100%;overflow:hidden}
+  .msgs{max-height:none;flex:1;padding:.75rem}
+  .msg{max-width:80%}
+  .cinpr{padding:.625rem .75rem;gap:6px}
+  .cinp{font-size:14px;min-width:0}
+  .cinpr .btn{flex-shrink:0;padding:8px 10px}
+  /* En móvil, mostrar solo lista O solo chat según la clase en .cshell */
+  .cshell.ver-lista .cmain{display:none}
+  .cshell.ver-lista .csb{display:flex}
+  .cshell.ver-chat .csb{display:none}
+  .cshell.ver-chat .cmain{display:flex}
+  .cshell:not(.ver-lista):not(.ver-chat) .cmain{display:none}
+}
+.btn-volver-lista{display:none}
+@media(max-width:600px){.cshell.ver-chat .btn-volver-lista{display:inline-flex}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="logo" onclick="go('home')"><svg width="30" height="30" viewBox="0 0 400 400" style="flex-shrink:0"><defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#2bd47f"/><stop offset="100%" stop-color="#16a35a"/></linearGradient></defs><path d="M130 120 h140 a34 34 0 0 1 34 34 v74 a34 34 0 0 1 -34 34 h-72 l-44 36 v-36 h-24 a34 34 0 0 1 -34 -34 v-74 a34 34 0 0 1 34 -34 z" fill="url(#lg)"/><path d="M158 190 l28 28 l56 -58" fill="none" stroke="#0f1115" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/></svg>Yo<em>Lo</em>Hago</a>
+  <button id="hamb" onclick="toggleMenu()" style="display:none;background:none;border:none;color:var(--t);font-size:26px;cursor:pointer;line-height:1">☰</button>
+  <div class="nr" id="nr">
+    <button class="nb gh" onclick="go('login')">Ingresar</button>
+    <button class="nb s" onclick="go('register')">Crear cuenta</button>
+  </div>
+</nav>
+
+<!-- HOME -->
+<div id="pg-home" class="pg on">
+  <div class="hero">
+    <div class="htag">📍 Chachapoyas, Amazonas</div>
+    <h1>El talento local,<br>al alcance de <em>todos</em></h1>
+    <p>Publica lo que necesitas o lo que sabes hacer. Sin llamadas incómodas, sin intermediarios.</p>
+    <div class="hacts">
+      <div class="hc" onclick="rlog('need')">
+        <div class="hci">🔍</div>
+        <div class="hct">Necesito un servicio</div>
+        <div class="hcs">Publica tu pedido y recibe propuestas</div>
+      </div>
+      <div class="hc" onclick="rlog('offer')">
+        <div class="hci">🔧</div>
+        <div class="hct">Ofrezco mi servicio</div>
+        <div class="hcs">Crea tu perfil y consigue clientes</div>
+      </div>
+    </div>
+  </div>
+  <div class="slbl">Pedidos publicados</div>
+  <div class="feed" id="fp"><div class="loading"><span class="spin"></span>Cargando pedidos...</div></div>
+  <div class="divl"></div>
+  <div class="slbl">Proveedores activos</div>
+  <div class="pgrid" id="fpr"><div class="loading"><span class="spin"></span>Cargando proveedores...</div></div>
+</div>
+
+<!-- PUBLICAR (elegir) -->
+<div id="pg-publicar" class="pg">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.5rem">
+    <button class="btn bsm" onclick="go('home')">← Inicio</button>
+    <div style="font-size:16px;font-weight:500">¿Qué quieres hacer?</div>
+  </div>
+  <div class="hacts" style="max-width:480px;margin:0 auto">
+    <div class="hc" onclick="rlog('need')">
+      <div class="hci">🔍</div>
+      <div class="hct">Necesito un servicio</div>
+      <div class="hcs">Publica lo que necesitas y recibe propuestas de quienes pueden ayudarte</div>
+    </div>
+    <div class="hc" onclick="rlog('offer')">
+      <div class="hci">🔧</div>
+      <div class="hct">Ofrezco un servicio</div>
+      <div class="hcs">Crea tu perfil de proveedor y consigue clientes en Chachapoyas</div>
+    </div>
+  </div>
+</div>
+
+<!-- NEED -->
+<div id="pg-need" class="pg"><div class="fw"><div class="fcard">
+  <div id="nok" class="sok" style="display:none">✓ Pedido publicado. Los proveedores verán tu anuncio.</div>
+  <div id="nerr" class="err"></div>
+  <div class="ftit">Publicar un pedido</div>
+  <div class="fsub">Describe lo que necesitas. Solo usuarios registrados podrán enviarte propuestas.</div>
+  <div class="fg"><label class="fl">¿Qué necesitas?</label><input class="fi" id="nt" placeholder="Ej: Instalar televisor con soporte de pared" /></div>
+  <div class="fg"><label class="fl">Descripción</label><textarea class="fi" id="nd" rows="3" style="resize:vertical" placeholder="Tamaño, tipo de pared, cuándo lo necesitas..."></textarea></div>
+  <div class="frow">
+    <div class="fg"><label class="fl">Categoría</label>
+      <select class="fi" id="nc"><option value="">Selecciona...</option><option>Hogar</option><option>Tecnología</option><option>Transporte</option><option>Contabilidad</option><option>Educación</option><option>Otro</option></select>
+    </div>
+    <div class="fg"><label class="fl">Presupuesto (S/)</label><input class="fi" id="nb2" type="number" placeholder="80" /></div>
+  </div>
+  <div class="fg"><label class="fl">Foto (opcional)</label><input class="fi" id="nfoto" type="file" accept="image/*" style="padding:8px" /><div style="font-size:11px;color:var(--t3);margin-top:4px">Una imagen ayuda a explicar mejor lo que necesitas</div></div>
+  <button class="btn bg_" style="width:100%;padding:11px" onclick="pubNeed()">Publicar pedido</button>
+</div></div></div>
+
+<!-- OFFER -->
+<div id="pg-offer" class="pg"><div class="fw"><div class="fcard">
+  <div id="ook" class="sok" style="display:none">✓ Perfil enviado para revisión. El admin lo aprobará pronto.</div>
+  <div id="oerr" class="err"></div>
+  <div class="ftit">Registrar mi servicio</div>
+  <div class="fsub">Tu perfil será revisado antes de aparecer en la plataforma.</div>
+  <div id="offer-datos" style="background:var(--bg3);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:.875rem;font-size:13px;color:var(--t2)">
+    <div style="font-size:11px;color:var(--t3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Tus datos (de tu cuenta)</div>
+    <div id="offer-nombre" style="font-weight:500;color:var(--t)">—</div>
+    <div id="offer-wsp" style="margin-top:2px">—</div>
+  </div>
+  <div class="fg"><label class="fl">Categoría</label>
+    <select class="fi" id="ocat"><option value="">Selecciona...</option><option>Gasfitería</option><option>Electricidad</option><option>Pintura</option><option>Instalación TV/RAC</option><option>Computadoras</option><option>Mudanzas</option><option>Contabilidad</option><option>Educación</option><option>Otro</option></select>
+  </div>
+  <div class="fg"><label class="fl">Descripción breve</label><textarea class="fi" id="odes" rows="2" style="resize:vertical" placeholder="Ej: 8 años de experiencia en instalaciones eléctricas..."></textarea></div>
+  <div class="fg"><label class="fl">Precio base (S/)</label><input class="fi" id="opr" type="number" placeholder="50" /></div>
+  <div class="trm"><b>Términos y condiciones:</b><br>• El proveedor acepta transferir el <b>5% de cada trabajo conseguido</b> vía YoLoHago al administrador por Yape dentro de 24h. El incumplimiento resulta en suspensión inmediata.<br>• Los datos de contacto (correo y teléfono) solo se comparten entre las partes <b>una vez cerrado un acuerdo</b> dentro de la app.<br>• El administrador de YoLoHago puede acceder a los datos de contacto para fines de soporte, verificación y cobro de comisiones.</div>
+  <div class="fchk"><input type="checkbox" id="ochk" style="flex-shrink:0;margin-top:1px;accent-color:var(--g)" /><label for="ochk">Acepto los términos y el compromiso de comisión del 5%</label></div>
+  <button class="btn bg_" style="width:100%;padding:11px" onclick="subOffer()">Enviar solicitud</button>
+</div></div></div>
+
+<!-- LOGIN -->
+<div id="pg-login" class="pg"><div class="fw"><div class="fcard">
+  <div id="lerr" class="err"></div>
+  <div class="ftit">Ingresar</div>
+  <div class="fsub">Accede para publicar pedidos, chatear con proveedores y gestionar tu perfil.</div>
+  <div class="fg"><label class="fl">Email</label><input class="fi" id="le" type="email" placeholder="tu@email.com" /></div>
+  <div class="fg"><label class="fl">Contraseña</label><input class="fi" id="lp" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" /></div>
+  <div style="text-align:right;margin-bottom:1rem;margin-top:-4px">
+    <button class="link-btn" onclick="go('forgot')">¿Olvidaste tu contraseña?</button>
+  </div>
+  <button class="btn bg_" style="width:100%;padding:11px;margin-bottom:.875rem" id="login-btn" onclick="doLogin()">Ingresar</button>
+  <div style="text-align:center;font-size:12px;color:var(--t2)">¿No tienes cuenta? <span style="color:var(--g);cursor:pointer" onclick="go('register')">Regístrate gratis</span></div>
+</div></div></div>
+
+<!-- FORGOT -->
+<div id="pg-forgot" class="pg"><div class="fw"><div class="fcard">
+  <div id="fok" class="sok" style="display:none">✉️ Si ese email está registrado, recibirás un enlace para recuperar tu contraseña en los próximos minutos.</div>
+  <div id="ferr" class="err"></div>
+  <div class="ftit">Recuperar contraseña</div>
+  <div class="fsub">Ingresa tu email y te enviaremos un enlace para restablecer tu contraseña.</div>
+  <div class="fg"><label class="fl">Email registrado</label><input class="fi" id="fe" type="email" placeholder="tu@email.com" /></div>
+  <button class="btn bg_" style="width:100%;padding:11px;margin-bottom:.875rem" onclick="sendForgot()">Enviar enlace de recuperación</button>
+  <div style="text-align:center;font-size:12px;color:var(--t2)"><span style="color:var(--g);cursor:pointer" onclick="go('login')">← Volver a ingresar</span></div>
+</div></div></div>
+
+<!-- REGISTER -->
+<div id="pg-register" class="pg"><div class="fw"><div class="fcard">
+  <div id="rok" class="sok" style="display:none">✓ Cuenta creada. Revisa tu email para confirmar tu cuenta.</div>
+  <div id="rerr" class="err"></div>
+  <div class="ftit">Crear cuenta</div>
+  <div class="fsub">Una cuenta para publicar pedidos y ofrecer servicios.</div>
+  <div class="frow"><div class="fg"><label class="fl">Nombres</label><input class="fi" id="rn" placeholder="María" /></div><div class="fg"><label class="fl">Apellidos</label><input class="fi" id="rl" placeholder="García" /></div></div>
+  <div class="fg"><label class="fl">Email</label><input class="fi" id="re" type="email" placeholder="tu@email.com" /></div>
+  <div class="fg"><label class="fl">WhatsApp (obligatorio)</label><input class="fi" id="rph" placeholder="951234567" /></div>
+  <div class="frow"><div class="fg"><label class="fl">Contraseña</label><input class="fi" id="rp1" type="password" placeholder="••••••••" /></div><div class="fg"><label class="fl">Confirmar</label><input class="fi" id="rp2" type="password" placeholder="••••••••" /></div></div>
+  <div class="trm" style="margin-top:.5rem"><b>Términos y condiciones de YoLoHago:</b><br>• YoLoHago es una plataforma que conecta a personas que necesitan servicios con quienes los ofrecen en Chachapoyas.<br>• Si ofreces un servicio y cierras un trato por la app, aceptas pagar una <b>comisión del 5%</b> del monto acordado al administrador, vía Yape, dentro de 24 horas de completado el trabajo.<br>• Los datos de contacto (correo y teléfono) solo se comparten entre las partes <b>una vez cerrado un acuerdo</b>.<br>• El administrador puede acceder a los datos de contacto para soporte, verificación y cobro de comisiones.<br>• El incumplimiento del pago de comisiones puede resultar en la suspensión de tu cuenta.</div>
+  <div class="fchk" style="margin-top:.75rem"><input type="checkbox" id="rchk" style="flex-shrink:0;margin-top:1px;accent-color:var(--g)" /><label for="rchk">He leído y acepto los términos y condiciones</label></div>
+  <button class="btn bg_" style="width:100%;padding:11px;margin-top:.5rem" onclick="doReg()">Crear cuenta gratis</button>
+</div></div></div>
+
+<!-- MIS ANUNCIOS -->
+<div id="pg-misanuncios" class="pg">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+    <button class="btn bsm" onclick="go('home')">← Inicio</button>
+    <div style="font-size:16px;font-weight:500">Mis anuncios</div>
+  </div>
+  <div id="mis-anuncios-list"><div class="loading"><span class="spin"></span>Cargando...</div></div>
+</div>
+
+<!-- CHAT -->
+<div id="pg-chat" class="pg">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+    <button class="btn bsm" onclick="salirChat()">← Volver</button>
+    <div style="font-size:16px;font-weight:500">Mensajes</div>
+  </div>
+  <div class="cshell ver-lista" id="cshell">
+    <div class="csb"><div class="csbh">Conversaciones</div><div id="cvl"><div class="loading"><span class="spin"></span></div></div></div>
+    <div class="cmain" id="cm"><div style="display:flex;align-items:center;justify-content:center;flex:1;color:var(--t3);font-size:13px;padding:2rem">Selecciona una conversación</div></div>
+  </div>
+</div>
+
+<!-- REVIEW -->
+<div id="pg-review" class="pg"><div class="fw"><div class="fcard">
+  <div id="rvok" class="sok" style="display:none"></div>
+  <div class="ftit">Confirmar servicio completado</div>
+  <div class="fsub">Califica al proveedor. Tu reseña es pública y ayuda a la comunidad.</div>
+  <div class="fg"><label class="fl">Calificación</label>
+    <div class="strow" id="strow">
+      <button class="stb" onclick="setStar(1)">★</button><button class="stb" onclick="setStar(2)">★</button><button class="stb" onclick="setStar(3)">★</button><button class="stb" onclick="setStar(4)">★</button><button class="stb" onclick="setStar(5)">★</button>
+    </div>
+  </div>
+  <div class="fg"><label class="fl">Monto final pagado (S/)</label><input class="fi" id="rva" type="number" placeholder="120" /></div>
+  <div class="fg"><label class="fl">Reseña</label><textarea class="fi" id="rvt" rows="3" style="resize:vertical" placeholder="¿Cómo fue el servicio?"></textarea></div>
+  <button class="btn bg_" style="width:100%;padding:11px" onclick="subRev()">Enviar reseña y confirmar pago</button>
+</div></div></div>
+
+<!-- PERFIL -->
+<div id="pg-profile" class="pg"><div class="fw">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.5rem">
+    <button class="btn bsm" onclick="go('home')">← Volver</button>
+    <div style="font-size:16px;font-weight:500">Mi perfil</div>
+  </div>
+  <div class="prof-sec">
+    <div style="font-size:13px;font-weight:500;color:var(--t);margin-bottom:1rem">Información de cuenta</div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <div class="av alg" id="prof-av" style="width:52px;height:52px;font-size:16px"></div>
+      <div><div style="font-size:15px;font-weight:500;color:var(--t)" id="prof-name"></div><div style="font-size:13px;color:var(--t2)" id="prof-email"></div></div>
+    </div>
+  </div>
+  <div class="prof-sec">
+    <div style="font-size:13px;font-weight:500;color:var(--t);margin-bottom:1rem">🔒 Cambiar contraseña</div>
+    <div id="cpok" class="sok" style="display:none">✓ Contraseña actualizada correctamente.</div>
+    <div id="cperr" class="err"></div>
+    <div class="fg"><label class="fl">Contraseña actual</label><input class="fi" id="cp1" type="password" placeholder="••••••••" /></div>
+    <div class="fg"><label class="fl">Nueva contraseña</label><input class="fi" id="cp2" type="password" placeholder="••••••••" /></div>
+    <div class="fg"><label class="fl">Confirmar nueva contraseña</label><input class="fi" id="cp3" type="password" placeholder="••••••••" /></div>
+    <button class="btn bg_" onclick="changePass()">Actualizar contraseña</button>
+  </div>
+  <div class="prof-sec">
+    <div style="font-size:13px;font-weight:500;color:var(--t);margin-bottom:1rem">Sesión</div>
+    <button class="btn" style="color:var(--red);border-color:var(--red)" onclick="logout()">Cerrar sesión</button>
+  </div>
+</div></div>
+
+<!-- ADMIN -->
+<div id="pg-admin" class="pg"><div class="ash">
+  <div class="atop">
+    <div><div style="font-size:18px;font-weight:500">Panel maestro</div><div style="font-size:12px;color:var(--t3);margin-top:2px">YoLoHago · Chachapoyas</div></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="abadge">🛡️ Administrador</div>
+      <button class="nb gh" onclick="logout()" style="font-size:12px">Cerrar sesión</button>
+    </div>
+  </div>
+  <div class="s4" id="as"></div>
+  <div style="margin-bottom:1.25rem"><div class="slbl" style="margin-bottom:.75rem">Ingresos por comisiones</div><div class="mch" id="mch"></div><div class="chlbl" id="chl"></div></div>
+  <div class="tabr">
+    <button class="tab on" onclick="atab('p',this)">Proveedores</button>
+    <button class="tab" onclick="atab('r',this)">Pedidos</button>
+    <button class="tab" onclick="atab('d',this)">Acuerdos</button>
+    <button class="tab" onclick="atab('c',this)">Comisiones</button>
+    <button class="tab" onclick="atab('u',this)">Usuarios</button>
+    <button class="tab" onclick="atab('a',this)">+ Agregar proveedor</button>
+  </div>
+  <div id="ac"></div>
+</div></div>
+
+<script>
+const SUPABASE_URL = 'https://fteginbfnfbrnpkzvduw.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0ZWdpbmJmbmZicm5wa3p2ZHV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxMDI3ODQsImV4cCI6MjA5NTY3ODc4NH0.8mZWw5wSvDCkWwekKSG3qbv01OA78m4KYfbCt9BSv7s';
+const ADMIN_EMAIL = 'davichorz759@gmail.com';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let G = {u:null, session:null, star:0, activeConvo:null, aTab:'p', reviewConvoId:null};
+
+async function init() {
+  const {data:{session}} = await sb.auth.getSession();
+  if(session) {
+    G.session = session;
+    G.u = session.user;
+    updateNav();
+    suscribirMensajesGlobal();
+    if(G.u.email === ADMIN_EMAIL) { go('admin'); }
+    else {
+      revisarNotificaciones();
+      let last=null;
+      try{ last=sessionStorage.getItem('ylh_page'); }catch(e){}
+      if(last && ['chat','misanuncios','profile','home'].includes(last)) go(last);
+      else loadHome();
+    }
+  } else {
+    loadHome();
+  }
+  sb.auth.onAuthStateChange((_e, session) => {
+    G.session = session;
+    G.u = session?.user || null;
+    updateNav();
+    if(G.u) suscribirMensajesGlobal();
+  });
+}
+
+function suscribirMensajesGlobal() {
+  if(G.globalChannel) return; // ya suscrito
+  G.globalChannel = sb.channel('mensajes-global')
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'mensajes'}, (payload) => {
+      // Si el mensaje no es mío, actualizar badge y lista
+      if(payload.new && payload.new.autor_id !== G.u?.id){
+        actualizarNotif();
+        // Si estoy en la pantalla de chat, refrescar la lista de conversaciones
+        if(document.getElementById('pg-chat')?.classList.contains('on')) loadChat();
+      }
+    })
+    .subscribe();
+}
+
+async function revisarNotificaciones() {
+  if(!G.u) return;
+  const {data:notifs} = await sb.from('notificaciones').select('*').eq('usuario_id',G.u.id).eq('leida',false).order('created_at',{ascending:false});
+  if(notifs && notifs.length>0){
+    let banner = document.getElementById('notif-banner');
+    if(!banner){
+      banner = document.createElement('div');
+      banner.id='notif-banner';
+      banner.style.cssText='position:sticky;top:56px;z-index:90;background:var(--rbg);border-bottom:1px solid var(--red);padding:12px 1.5rem;color:var(--red);font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:10px';
+      document.querySelector('.nav').insertAdjacentElement('afterend',banner);
+    }
+    banner.innerHTML=`<div>${notifs[0].mensaje}</div><button class="btn bsm" style="color:var(--red);border-color:var(--red);flex-shrink:0" onclick="cerrarNotif()">Entendido</button>`;
+    G._notifIds = notifs.map(n=>n.id);
+  }
+}
+
+async function cerrarNotif() {
+  if(G._notifIds && G._notifIds.length>0){
+    await sb.from('notificaciones').update({leida:true}).in('id',G._notifIds);
+  }
+  const banner=document.getElementById('notif-banner');
+  if(banner) banner.remove();
+}
+
+function toggleMenu() {
+  document.getElementById('nr').classList.toggle('abierto');
+}
+
+function go(p) {
+  // Cerrar menú móvil al navegar
+  const nr=document.getElementById('nr'); if(nr) nr.classList.remove('abierto');
+  // Al salir del chat, cerrar la suscripción realtime
+  if(p!=='chat' && G.msgChannel){ sb.removeChannel(G.msgChannel); G.msgChannel=null; G.activeConvo=null; }
+  document.querySelectorAll('.pg').forEach(x => x.classList.remove('on'));
+  document.getElementById('pg-'+p).classList.add('on');
+  try{ sessionStorage.setItem('ylh_page', p); }catch(e){}
+  if(p==='home') loadHome();
+  if(p==='chat') loadChat();
+  if(p==='admin') loadAdmin();
+  if(p==='profile') loadProfile();
+  if(p==='misanuncios') loadMisAnuncios();
+  if(p==='offer') llenarDatosOffer();
+  if(p==='publicar') { /* pantalla estática, no carga datos */ }
+}
+
+function rlog(d) {
+  if(!G.u) { G._d=d; go('login'); }
+  else go(d);
+}
+
+function ini(n) {
+  return (n||'U').split(' ').slice(0,2).map(x=>x[0]).join('').toUpperCase();
+}
+
+function timeAgo(ts) {
+  const d = new Date(ts), now = new Date();
+  const diff = Math.floor((now-d)/1000);
+  if(diff<60) return 'ahora';
+  if(diff<3600) return `hace ${Math.floor(diff/60)} min`;
+  if(diff<86400) return `hace ${Math.floor(diff/3600)} h`;
+  return `hace ${Math.floor(diff/86400)} días`;
+}
+
+async function loadHome() {
+  const fp = document.getElementById('fp');
+  const fpr = document.getElementById('fpr');
+  fp.innerHTML = '<div class="loading"><span class="spin"></span>Cargando...</div>';
+  fpr.innerHTML = '<div class="loading"><span class="spin"></span>Cargando...</div>';
+
+  const {data:peds} = await sb.from('pedidos').select('*,usuarios(nombre,apellidos)').eq('status','abierto').order('created_at',{ascending:false}).limit(10);
+  if(peds && peds.length > 0) {
+    fp.innerHTML = peds.map(p => `
+      <div class="fc">
+        <div class="fct"><div><div class="fctt">${p.titulo}</div><div class="fcm">${p.categoria} · ${timeAgo(p.created_at)}</div></div>
+        <span class="pill pg_">abierto</span></div>
+        <div class="fcd">${p.descripcion||''}</div>
+        ${p.foto?`<img src="${p.foto}" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin-bottom:1rem;cursor:pointer" onclick="window.open('${p.foto}','_blank')"/>`:''}
+        <div class="fcf">
+          <div class="fcu"><div class="av">${ini((p.usuarios?.nombre||'?')+' '+(p.usuarios?.apellidos||''))}</div>${p.usuarios?.nombre||'Usuario'}</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:12px;color:var(--t2)">S/ ${p.presupuesto||'?'}</span>
+            ${G.u && p.usuario_id===G.u.id
+              ? `<button class="btn bsm" style="color:var(--t2)" onclick="cerrarPedido('${p.id}')">Marcar resuelto</button>`
+              : `<button class="btn bog bsm" onclick="contactarPedido('${p.id}','${p.usuario_id}','${(p.titulo||'').replace(/'/g,'')}')">Me interesa</button>`}
+          </div>
+        </div>
+      </div>`).join('');
+  } else {
+    fp.innerHTML = '<div class="loading">Aún no hay pedidos publicados. ¡Sé el primero!</div>';
+  }
+
+  const {data:provs} = await sb.from('proveedores').select('*').eq('status','activo').order('rating',{ascending:false}).limit(8);
+  if(provs && provs.length > 0) {
+    fpr.innerHTML = provs.map(p => `
+      <div class="pc">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
+          <div class="av alg">${ini(p.nombre)}</div>
+          <div><div style="font-size:13px;font-weight:500;color:var(--t)">${p.nombre}</div><div style="font-size:12px;color:var(--t2)">${p.categoria}</div></div>
+        </div>
+        ${p.total_reviews>0 ? `<div style="display:flex;align-items:center;gap:5px;margin-bottom:7px"><span class="stars">${'★'.repeat(Math.round(p.rating))}</span><span style="font-size:12px;color:var(--t2)">${p.rating} (${p.total_reviews})</span></div>` : `<div style="margin-bottom:7px"><span class="pill pa_">Nuevo</span></div>`}
+        <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Desde S/ ${p.precio_base||'?'}</div>
+        <button class="btn bog bsm" style="width:100%" onclick="contactarProveedor('${p.id}','${p.usuario_id||''}','${(p.nombre||'').replace(/'/g,'')}')">Solicitar servicio</button>
+      </div>`).join('');
+  } else {
+    fpr.innerHTML = '<div class="loading">Aún no hay proveedores activos.</div>';
+  }
+}
+
+async function pubNeed() {
+  const t=document.getElementById('nt').value.trim();
+  const d=document.getElementById('nd').value.trim();
+  const cat=document.getElementById('nc').value;
+  const b=document.getElementById('nb2').value;
+  const err=document.getElementById('nerr');
+  const btn=event?.target;
+  err.style.display='none';
+  if(!t||!d||!cat){err.textContent='Completa todos los campos.';err.style.display='block';return;}
+  let fotoUrl=null;
+  const fotoInput=document.getElementById('nfoto');
+  if(fotoInput && fotoInput.files[0]){
+    if(btn){btn.textContent='Subiendo foto...';btn.disabled=true;}
+    fotoUrl = await subirImagen(fotoInput.files[0]);
+  }
+  const {error} = await sb.from('pedidos').insert({titulo:t,descripcion:d,categoria:cat,presupuesto:b||null,usuario_id:G.u.id,status:'abierto',foto:fotoUrl});
+  if(btn){btn.textContent='Publicar pedido';btn.disabled=false;}
+  if(error){err.textContent='Error al publicar. Inténtalo de nuevo.';err.style.display='block';return;}
+  document.getElementById('nok').style.display='flex';
+  document.getElementById('nt').value='';
+  document.getElementById('nd').value='';
+  if(fotoInput) fotoInput.value='';
+  setTimeout(()=>{document.getElementById('nok').style.display='none';go('home');},2500);
+}
+
+async function llenarDatosOffer() {
+  if(!G.u) return;
+  const {data:u} = await sb.from('usuarios').select('nombre,apellidos,whatsapp').eq('id',G.u.id).single();
+  G.offerDatos = u || {};
+  const nombre = ((u?.nombre||'')+' '+(u?.apellidos||'')).trim() || 'Sin nombre en tu perfil';
+  document.getElementById('offer-nombre').textContent = '👤 '+nombre;
+  document.getElementById('offer-wsp').textContent = '📱 '+(u?.whatsapp||'Sin WhatsApp en tu perfil');
+}
+
+async function subOffer() {
+  const cat=document.getElementById('ocat').value;
+  const chk=document.getElementById('ochk').checked;
+  const err=document.getElementById('oerr');
+  err.style.display='none';
+  const d = G.offerDatos||{};
+  const nombreCompleto = ((d.nombre||'')+' '+(d.apellidos||'')).trim();
+  if(!nombreCompleto || !d.whatsapp){err.textContent='Tu perfil no tiene nombre o WhatsApp. Complétalos en tu perfil primero.';err.style.display='block';return;}
+  if(!cat||!chk){err.textContent='Selecciona una categoría y acepta los términos.';err.style.display='block';return;}
+  const {error} = await sb.from('proveedores').insert({
+    nombre:nombreCompleto,
+    categoria:cat,
+    descripcion:document.getElementById('odes').value,
+    precio_base:document.getElementById('opr').value||null,
+    whatsapp:d.whatsapp,
+    usuario_id:G.u.id,
+    status:'pendiente'
+  });
+  if(error){err.textContent='Error al enviar. Inténtalo de nuevo.';err.style.display='block';return;}
+  document.getElementById('ook').style.display='flex';
+  document.getElementById('ocat').value='';
+  document.getElementById('odes').value='';
+  document.getElementById('opr').value='';
+  document.getElementById('ochk').checked=false;
+  setTimeout(()=>{document.getElementById('ook').style.display='none';go('misanuncios');},2000);
+}
+
+async function cerrarPedido(id) {
+  if(!confirm('¿Marcar este pedido como resuelto? Se ocultará del listado público.')) return;
+  await sb.from('pedidos').update({status:'resuelto'}).eq('id',id);
+  loadHome();
+}
+
+async function doLogin() {
+  const e=document.getElementById('le').value.trim();
+  const p=document.getElementById('lp').value;
+  const err=document.getElementById('lerr');
+  const btn=document.getElementById('login-btn');
+  err.style.display='none';
+  if(!e||!p){err.textContent='Completa todos los campos.';err.style.display='block';return;}
+  btn.textContent='Ingresando...';btn.disabled=true;
+  const {data,error} = await sb.auth.signInWithPassword({email:e,password:p});
+  btn.textContent='Ingresar';btn.disabled=false;
+  if(error){err.textContent='Email o contraseña incorrectos.';err.style.display='block';return;}
+  G.u=data.user;G.session=data.session;
+  updateNav();
+  if(e===ADMIN_EMAIL) go('admin');
+  else { go(G._d||'home'); revisarNotificaciones(); }
+  G._d=null;
+}
+
+async function doReg() {
+  const n=document.getElementById('rn').value.trim();
+  const l=document.getElementById('rl').value.trim();
+  const e=document.getElementById('re').value.trim();
+  const ph=document.getElementById('rph').value.trim();
+  const p1=document.getElementById('rp1').value;
+  const p2=document.getElementById('rp2').value;
+  const err=document.getElementById('rerr');
+  err.style.display='none';
+  if(!n||!e||!p1){err.textContent='Completa todos los campos.';err.style.display='block';return;}
+  if(!ph){err.textContent='El WhatsApp es obligatorio para que te puedan contactar.';err.style.display='block';return;}
+  if(p1!==p2){err.textContent='Las contraseñas no coinciden.';err.style.display='block';return;}
+  if(p1.length<6){err.textContent='La contraseña debe tener al menos 6 caracteres.';err.style.display='block';return;}
+  if(!document.getElementById('rchk').checked){err.textContent='Debes aceptar los términos y condiciones para crear tu cuenta.';err.style.display='block';return;}
+  const {data,error} = await sb.auth.signUp({email:e,password:p1,options:{data:{nombre:n,apellidos:l,whatsapp:ph}}});
+  if(error){err.textContent=error.message;err.style.display='block';return;}
+  if(data.user) {
+    await sb.from('usuarios').insert({id:data.user.id,nombre:n,apellidos:l,email:e,whatsapp:ph,password_hash:'supabase_auth'});
+  }
+  document.getElementById('rok').style.display='flex';
+  setTimeout(()=>{document.getElementById('rok').style.display='none';go('login');},3000);
+}
+
+async function sendForgot() {
+  const e=document.getElementById('fe').value.trim();
+  const err=document.getElementById('ferr');
+  err.style.display='none';
+  if(!e){err.textContent='Ingresa tu email.';err.style.display='block';return;}
+  await sb.auth.resetPasswordForEmail(e,{redirectTo:window.location.origin+'/?reset=true'});
+  document.getElementById('fok').style.display='flex';
+  document.getElementById('fe').value='';
+}
+
+async function changePass() {
+  const p2=document.getElementById('cp2').value;
+  const p3=document.getElementById('cp3').value;
+  const err=document.getElementById('cperr');
+  err.style.display='none';
+  if(!p2||!p3){err.textContent='Completa todos los campos.';err.style.display='block';return;}
+  if(p2!==p3){err.textContent='Las contraseñas no coinciden.';err.style.display='block';return;}
+  if(p2.length<6){err.textContent='Mínimo 6 caracteres.';err.style.display='block';return;}
+  const {error} = await sb.auth.updateUser({password:p2});
+  if(error){err.textContent='Error al actualizar. Intenta cerrar sesión y usar "Olvidé mi contraseña".';err.style.display='block';return;}
+  document.getElementById('cp1').value='';
+  document.getElementById('cp2').value='';
+  document.getElementById('cp3').value='';
+  document.getElementById('cpok').style.display='flex';
+  setTimeout(()=>document.getElementById('cpok').style.display='none',3000);
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  G.u=null;G.session=null;
+  updateNav();
+  go('home');
+}
+
+function loadProfile() {
+  if(!G.u) return;
+  const meta = G.u.user_metadata||{};
+  const name = (meta.nombre||'')+' '+(meta.apellidos||'');
+  document.getElementById('prof-name').textContent = name.trim()||G.u.email;
+  document.getElementById('prof-email').textContent = G.u.email;
+  document.getElementById('prof-av').textContent = ini(name.trim()||G.u.email);
+}
+
+async function contactarPedido(pedidoId, duenoId, titulo) {
+  if(!G.u){G._d='chat';go('login');return;}
+  if(duenoId===G.u.id){alert('Este es tu propio anuncio.');return;}
+  // Un chat por anuncio: busca conversación de ESTE pedido con ESTE interesado
+  const {data:exist} = await sb.from('conversaciones').select('id').eq('pedido_id',pedidoId).eq('interesado_id',G.u.id).maybeSingle();
+  let convoId;
+  if(exist){convoId=exist.id;}
+  else {
+    const {data:nueva} = await sb.from('conversaciones').insert({pedido_id:pedidoId,cliente_id:duenoId,interesado_id:G.u.id,titulo_ref:titulo,status:'activa'}).select().single();
+    convoId=nueva.id;
+  }
+  go('chat');
+  setTimeout(()=>openConvo(convoId),300);
+}
+
+async function contactarProveedor(provId, provUserId, nombre) {
+  if(!G.u){G._d='chat';go('login');return;}
+  if(provUserId && provUserId===G.u.id){alert('Este es tu propio servicio. No puedes solicitarte a ti mismo.');return;}
+  // Un chat por servicio: busca conversación de ESTE proveedor con ESTE interesado
+  const {data:exist} = await sb.from('conversaciones').select('id').eq('proveedor_id',provId).eq('interesado_id',G.u.id).is('pedido_id',null).maybeSingle();
+  let convoId;
+  if(exist){convoId=exist.id;}
+  else {
+    const {data:nueva} = await sb.from('conversaciones').insert({proveedor_id:provId,cliente_id:provUserId||null,interesado_id:G.u.id,titulo_ref:'Servicio: '+nombre,status:'activa'}).select().single();
+    convoId=nueva.id;
+  }
+  go('chat');
+  setTimeout(()=>openConvo(convoId),300);
+}
+
+function salirChat() {
+  const cshell=document.getElementById('cshell');
+  // Si estoy viendo un chat abierto en móvil, primero vuelvo a la lista
+  if(cshell && cshell.classList.contains('ver-chat') && window.innerWidth<=600){
+    cshell.classList.remove('ver-chat');
+    cshell.classList.add('ver-lista');
+    G.activeConvo=null;
+    if(G.msgChannel){ sb.removeChannel(G.msgChannel); G.msgChannel=null; }
+  } else {
+    // Si ya estoy en la lista (o en escritorio), voy al inicio
+    go('home');
+  }
+}
+
+async function loadChat() {
+  if(!G.u){go('login');return;}
+  const cshell=document.getElementById('cshell');
+  if(cshell){cshell.classList.remove('ver-chat');cshell.classList.add('ver-lista');}
+  const cvl = document.getElementById('cvl');
+  const [r1, r2] = await Promise.all([
+    sb.from('conversaciones').select('*').eq('interesado_id',G.u.id),
+    sb.from('conversaciones').select('*').eq('cliente_id',G.u.id)
+  ]);
+  let convos = [...(r1.data||[]), ...(r2.data||[])];
+  const seen = new Set();
+  convos = convos.filter(c=>{if(seen.has(c.id))return false;seen.add(c.id);return true;});
+  convos.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  if(convos.length===0){cvl.innerHTML='<div class="loading" style="font-size:12px;padding:1rem">No tienes conversaciones aún.</div>';return;}
+  // Traer nombres de los otros usuarios
+  const otrosIds = convos.map(c=> c.interesado_id===G.u.id ? c.cliente_id : c.interesado_id).filter(Boolean);
+  let nombres = {};
+  if(otrosIds.length>0){
+    const {data:us} = await sb.from('usuarios').select('id,nombre,apellidos').in('id',otrosIds);
+    (us||[]).forEach(u=>nombres[u.id]={nombre:u.nombre,apellidos:u.apellidos});
+  }
+  // Contar mensajes no leídos por conversación
+  const convIds = convos.map(c=>c.id);
+  let noLeidosPorConv = {};
+  if(convIds.length>0){
+    const {data:noleidos} = await sb.from('mensajes').select('conversacion_id').in('conversacion_id',convIds).neq('autor_id',G.u.id).eq('leido',false);
+    (noleidos||[]).forEach(m=>{noLeidosPorConv[m.conversacion_id]=(noLeidosPorConv[m.conversacion_id]||0)+1;});
+  }
+  cvl.innerHTML = convos.map(c=>{
+    const otroId = c.interesado_id===G.u.id ? c.cliente_id : c.interesado_id;
+    const otro = nombres[otroId];
+    const nombreOtro = otro ? (otro.nombre||'Usuario') : 'Usuario';
+    const sinLeer = noLeidosPorConv[c.id]||0;
+    return `<div class="cvo ${G.activeConvo===c.id?'on':''}" onclick="openConvo('${c.id}')">
+      <div class="av">${ini(nombreOtro)}</div>
+      <div style="flex:1;min-width:0"><div class="cvon">${nombreOtro}${sinLeer>0?` <span style="background:var(--g);color:#000;border-radius:999px;padding:0 6px;font-size:10px;font-weight:600;margin-left:4px">${sinLeer}</span>`:''}</div><div class="cvop">${c.titulo_ref||'Conversación'}</div></div>
+    </div>`;}).join('');
+}
+
+async function openConvo(id) {
+  G.activeConvo=id;
+  const cshell=document.getElementById('cshell');
+  if(cshell){cshell.classList.remove('ver-lista');cshell.classList.add('ver-chat');}
+  // Quitar AL INSTANTE el contador de esta conversación en la lista (sin esperar a la base)
+  const item = document.querySelector(`.cvo[onclick*="${id}"]`);
+  if(item){
+    item.classList.add('on');
+    const badge = item.querySelector('.cvon span');
+    if(badge) badge.remove();
+  }
+  document.querySelectorAll('.cvo').forEach(el=>{ if(!el.getAttribute('onclick')?.includes(id)) el.classList.remove('on'); });
+  // Marcar como leídos PRIMERO (rápido) y actualizar el badge global
+  sb.from('mensajes').update({leido:true}).eq('conversacion_id',id).neq('autor_id',G.u.id).eq('leido',false).then(()=>{ actualizarNotif(); });
+  const {data:conv} = await sb.from('conversaciones').select('*').eq('id',id).single();
+  if(!conv){document.getElementById('cm').innerHTML='<div style="display:flex;align-items:center;justify-content:center;flex:1;color:var(--t3);font-size:13px;padding:2rem">Esta conversación ya no existe.</div>';return;}
+  const otroId = conv.interesado_id===G.u.id ? conv.cliente_id : conv.interesado_id;
+  let otro = null;
+  if(otroId){
+    const {data:u} = await sb.from('usuarios').select('nombre,apellidos,email,whatsapp').eq('id',otroId).single();
+    otro = u;
+  }
+  G.convData = {conv, otro, id};
+  await renderMensajes(id);
+  // Suscripción realtime: escucha mensajes nuevos de esta conversación
+  if(G.msgChannel){ sb.removeChannel(G.msgChannel); }
+  G.msgChannel = sb.channel('msgs-'+id)
+    .on('postgres_changes', {event:'*', schema:'public', table:'mensajes', filter:'conversacion_id=eq.'+id}, () => {
+      if(G.activeConvo===id) renderMensajes(id);
+    })
+    .subscribe();
+  setTimeout(()=>{ actualizarNotif(); }, 800);
+}
+
+async function refrescarListaConvos() {
+  // Vuelve a dibujar solo la lista lateral sin tocar el chat abierto
+  if(!G.u) return;
+  const cvl = document.getElementById('cvl');
+  if(!cvl) return;
+  const [r1, r2] = await Promise.all([
+    sb.from('conversaciones').select('*').eq('interesado_id',G.u.id),
+    sb.from('conversaciones').select('*').eq('cliente_id',G.u.id)
+  ]);
+  let convos = [...(r1.data||[]), ...(r2.data||[])];
+  const seen = new Set();
+  convos = convos.filter(c=>{if(seen.has(c.id))return false;seen.add(c.id);return true;});
+  convos.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  if(convos.length===0){cvl.innerHTML='<div class="loading" style="font-size:12px;padding:1rem">No tienes conversaciones aún.</div>';return;}
+  const otrosIds = convos.map(c=> c.interesado_id===G.u.id ? c.cliente_id : c.interesado_id).filter(Boolean);
+  let nombres = {};
+  if(otrosIds.length>0){
+    const {data:us} = await sb.from('usuarios').select('id,nombre,apellidos').in('id',otrosIds);
+    (us||[]).forEach(u=>nombres[u.id]={nombre:u.nombre,apellidos:u.apellidos});
+  }
+  const convIds = convos.map(c=>c.id);
+  let noLeidosPorConv = {};
+  if(convIds.length>0){
+    const {data:noleidos} = await sb.from('mensajes').select('conversacion_id').in('conversacion_id',convIds).neq('autor_id',G.u.id).eq('leido',false);
+    (noleidos||[]).forEach(m=>{noLeidosPorConv[m.conversacion_id]=(noLeidosPorConv[m.conversacion_id]||0)+1;});
+  }
+  cvl.innerHTML = convos.map(c=>{
+    const otroId = c.interesado_id===G.u.id ? c.cliente_id : c.interesado_id;
+    const otro = nombres[otroId];
+    const nombreOtro = otro ? (otro.nombre||'Usuario') : 'Usuario';
+    const sinLeer = noLeidosPorConv[c.id]||0;
+    return `<div class="cvo ${G.activeConvo===c.id?'on':''}" onclick="openConvo('${c.id}')">
+      <div class="av">${ini(nombreOtro)}</div>
+      <div style="flex:1;min-width:0"><div class="cvon">${nombreOtro}${sinLeer>0?` <span style="background:var(--g);color:#000;border-radius:999px;padding:0 6px;font-size:10px;font-weight:600;margin-left:4px">${sinLeer}</span>`:''}</div><div class="cvop">${c.titulo_ref||'Conversación'}</div></div>
+    </div>`;}).join('');
+}
+
+async function renderMensajes(id) {
+  let {conv, otro} = G.convData||{};
+  // Traer la conversación fresca (por si el monto_acordado cambió al aceptar un trato)
+  const {data:convFresca} = await sb.from('conversaciones').select('*').eq('id',id).single();
+  if(convFresca){ conv = convFresca; if(G.convData) G.convData.conv = convFresca; }
+  const {data:msgs} = await sb.from('mensajes').select('*').eq('conversacion_id',id).order('created_at',{ascending:true});
+  const nombreOtro = otro ? (otro.nombre||'Usuario') : 'Usuario';
+  const cm = document.getElementById('cm');
+  const hayAcuerdo = conv && conv.monto_acordado != null;
+  const esAdmin = G.u.email===ADMIN_EMAIL;
+  // Quien PAGA (y por tanto marca completado): en un pedido es el dueño (cliente_id);
+  // en un servicio ofrecido es quien contactó (interesado_id).
+  const esPedido = !!conv?.pedido_id;
+  const quienPagaId = esPedido ? conv?.cliente_id : conv?.interesado_id;
+  const yoPago = G.u.id === quienPagaId;
+  const verContacto = (hayAcuerdo || esAdmin) && otro;
+  const contactoHTML = verContacto ? `<div style="background:var(--gbg);border:1px solid var(--g3);border-radius:10px;padding:10px 12px;margin:0 1rem 8px;font-size:12px;color:var(--g)">
+    <div style="font-weight:500;margin-bottom:4px">${esAdmin&&!hayAcuerdo?'📋 Datos de contacto (admin)':'✓ Acuerdo cerrado — datos de contacto'}</div>
+    📧 ${otro.email||'sin email'} &nbsp;·&nbsp; 📱 ${otro.whatsapp||'sin teléfono'}
+  </div>` : '';
+  cm.innerHTML = `
+    <div class="ctop">
+      <div class="av">${ini(nombreOtro)}</div>
+      <div><div style="font-size:14px;font-weight:500;color:var(--t)">${nombreOtro}</div><div style="font-size:12px;color:var(--t3)">${conv?.titulo_ref||''}</div></div>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        ${hayAcuerdo&&conv?.status!=='completada'&&(yoPago||esAdmin)?`<button class="btn bog bsm" onclick="G.reviewConvoId='${id}';go('review')">✓ Confirmar completado</button>`:''}
+        ${hayAcuerdo&&conv?.status!=='completada'&&!yoPago&&!esAdmin?`<span style="font-size:11px;color:var(--t3);align-self:center">Esperando que el cliente confirme</span>`:''}
+        ${conv?.status==='completada'?`<span class="pill pg_" style="align-self:center">✓ completado</span>`:''}
+        <button class="btn bsm" style="color:var(--red);border-color:var(--red)" onclick="borrarChat('${id}')" title="Borrar conversación">🗑</button>
+      </div>
+    </div>
+    ${contactoHTML}
+    <div class="msgs" id="msgs-box">
+      ${(msgs||[]).map(m=>{
+        if(m.tipo==='deal') {
+          const esMio = m.autor_id===G.u.id;
+          const aceptado = m.contenido.includes('|aceptado');
+          const monto = m.contenido.split('|')[0];
+          return `<div class="dbox"><div class="dlbl">Propuesta de precio</div><div class="damt">S/ ${monto}</div>${
+            aceptado ? `<span class="pill pg_">✓ Acuerdo confirmado</span>`
+            : esMio ? `<span class="pill pa_">Esperando respuesta...</span>`
+            : `<div style="display:flex;gap:8px"><button class="btn bg_ bsm" onclick="aceptarDeal('${id}','${m.id}','${monto}')">Aceptar trato</button></div>`
+          }</div>`;
+        }
+        if(m.tipo==='sistema') return `<div class="msys">${m.contenido}</div>`;
+        if(m.tipo==='imagen') return `<div class="msg ${m.autor_id===G.u.id?'mo':'mi'}" style="padding:4px"><img src="${m.contenido}" style="max-width:200px;max-height:240px;border-radius:10px;display:block;cursor:pointer" onclick="window.open('${m.contenido}','_blank')"/><div class="mt">${timeAgo(m.created_at)}</div></div>`;
+        return `<div class="msg ${m.autor_id===G.u.id?'mo':'mi'}">${m.contenido}<div class="mt">${timeAgo(m.created_at)}</div></div>`;
+      }).join('')}
+    </div>
+    <div class="cinpr">
+      <input class="cinp" id="cinp" placeholder="Escribe un mensaje..." onkeydown="if(event.key==='Enter')sendMsg('${id}')" />
+      <input type="file" id="fotochat" accept="image/*" style="display:none" onchange="enviarFotoChat('${id}',this)" />
+      <button class="btn bog bsm" onclick="document.getElementById('fotochat').click()" title="Enviar foto">📷</button>
+      ${!hayAcuerdo?`<button class="btn bog bsm" onclick="pDeal('${id}')">Proponer precio</button>`:''}
+      <button class="btn bg_ bsm" onclick="sendMsg('${id}')">➤</button>
+    </div>`;
+  const box = document.getElementById('msgs-box');
+  if(box) box.scrollTop = box.scrollHeight;
+}
+
+async function borrarChat(convoId) {
+  if(!confirm('¿Borrar esta conversación completa? Se eliminarán todos los mensajes y no podrás recuperarla.')) return;
+  await sb.from('conversaciones').delete().eq('id',convoId);
+  G.activeConvo=null;
+  document.getElementById('cm').innerHTML='<div style="display:flex;align-items:center;justify-content:center;flex:1;color:var(--t3);font-size:13px;padding:2rem">Selecciona una conversación</div>';
+  loadChat();
+}
+
+async function actualizarNotif() {
+  if(!G.u) return;
+  // Contar mensajes no leídos en conversaciones donde participo
+  const [r1,r2] = await Promise.all([
+    sb.from('conversaciones').select('id').eq('interesado_id',G.u.id),
+    sb.from('conversaciones').select('id').eq('cliente_id',G.u.id)
+  ]);
+  const ids = [...(r1.data||[]),...(r2.data||[])].map(c=>c.id);
+  let count = 0;
+  if(ids.length>0){
+    const {count:c} = await sb.from('mensajes').select('id',{count:'exact',head:true}).in('conversacion_id',ids).neq('autor_id',G.u.id).eq('leido',false);
+    count = c||0;
+  }
+  const badge = document.getElementById('notif-badge');
+  if(badge){
+    if(count>0){badge.textContent=count;badge.style.display='inline-block';}
+    else badge.style.display='none';
+  }
+}
+
+async function subirImagen(file) {
+  if(!file) return null;
+  if(file.size > 5*1024*1024){ alert('La imagen es muy pesada (máx 5MB).'); return null; }
+  const ext = (file.name.split('.').pop()||'jpg').toLowerCase();
+  const nombre = `${G.u.id}/${Date.now()}.${ext}`;
+  const {error} = await sb.storage.from('imagenes').upload(nombre, file, {upsert:true});
+  if(error){ console.log('Error subiendo imagen:',error); alert('No se pudo subir la imagen.'); return null; }
+  const {data} = sb.storage.from('imagenes').getPublicUrl(nombre);
+  return data.publicUrl;
+}
+
+async function enviarFotoChat(convoId, inputEl) {
+  const file = inputEl.files[0];
+  if(!file) return;
+  inputEl.value='';
+  const url = await subirImagen(file);
+  if(!url) return;
+  await sb.from('mensajes').insert({conversacion_id:convoId,autor_id:G.u.id,tipo:'imagen',contenido:url,leido:false});
+  renderMensajes(convoId);
+}
+
+async function sendMsg(convoId) {
+  const inp = document.getElementById('cinp');
+  const txt = inp.value.trim();
+  if(!txt) return;
+  inp.value='';
+  await sb.from('mensajes').insert({conversacion_id:convoId,autor_id:G.u.id,tipo:'texto',contenido:txt,leido:false});
+  renderMensajes(convoId);
+}
+
+async function pDeal(convoId) {
+  const amt = prompt('¿Cuánto propones cobrar? (S/)');
+  if(!amt||isNaN(amt)) return;
+  await sb.from('mensajes').insert({conversacion_id:convoId,autor_id:G.u.id,tipo:'deal',contenido:amt});
+  renderMensajes(convoId);
+}
+
+async function aceptarDeal(convoId, msgId, monto) {
+  await sb.from('mensajes').update({contenido:monto+'|aceptado'}).eq('id',msgId);
+  await sb.from('conversaciones').update({monto_acordado:parseFloat(monto)}).eq('id',convoId);
+  await sb.from('mensajes').insert({conversacion_id:convoId,autor_id:G.u.id,tipo:'sistema',contenido:`Acuerdo confirmado por S/ ${monto}. Trabajo agendado.`});
+  if(G.convData) G.convData.conv.monto_acordado=parseFloat(monto);
+  renderMensajes(convoId);
+}
+
+async function loadMisAnuncios() {
+  if(!G.u){go('login');return;}
+  const cont = document.getElementById('mis-anuncios-list');
+  cont.innerHTML='<div class="loading"><span class="spin"></span>Cargando...</div>';
+  const {data:peds} = await sb.from('pedidos').select('*').eq('usuario_id',G.u.id).order('created_at',{ascending:false});
+  const activos = (peds||[]).filter(p=>p.status==='abierto');
+  const cerrados = (peds||[]).filter(p=>p.status!=='abierto');
+
+  async function renderPedido(p, esCerrado) {
+    const {data:convos,count} = await sb.from('conversaciones').select('*,interesado:interesado_id(nombre,apellidos)',{count:'exact'}).eq('pedido_id',p.id);
+    return `<div class="fc" style="margin-bottom:12px;${esCerrado?'opacity:.75':''}">
+      <div class="fct"><div><div class="fctt">${p.titulo}</div><div class="fcm">${p.categoria} · ${timeAgo(p.created_at)}</div></div>
+      <span class="pill ${p.status==='abierto'?'pg_':p.status==='resuelto'?'pg_':'pp_'}">${p.status==='resuelto'?'✓ resuelto':p.status}</span></div>
+      <div class="fcd">${p.descripcion||''}</div>
+      <div style="border-top:1px solid var(--bd);padding-top:10px;margin-top:6px">
+        <div style="font-size:12px;color:var(--t3);margin-bottom:8px">${count||0} ${count===1?'conversación':'conversaciones'}</div>
+        ${(convos||[]).map(c=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px"><div class="av" style="width:26px;height:26px;font-size:10px">${ini(c.interesado?.nombre||'U')}</div><span style="font-size:13px">${c.interesado?.nombre||'Usuario'} ${c.interesado?.apellidos||''}</span>${c.monto_acordado?`<span class="pill pg_" style="font-size:10px">S/ ${c.monto_acordado} acordado</span>`:''}</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn bog bsm" onclick="go('chat');setTimeout(()=>openConvo('${c.id}'),300)">Ver chat</button>
+            ${!esCerrado?`<button class="btn bsm" style="color:var(--g);border-color:var(--g3)" onclick="contratarYcalificar('${c.id}','${p.id}','${(c.interesado?.nombre||'').replace(/'/g,'')}')">Lo contraté</button>`:''}
+          </div>
+        </div>`).join('')||'<div style="font-size:12px;color:var(--t3)">Nadie ha respondido aún.</div>'}
+        ${!esCerrado?`<div style="display:flex;gap:6px;margin-top:12px;border-top:1px solid var(--bd);padding-top:10px">
+          <button class="btn bsm" onclick="cerrarPedido('${p.id}')">Cerrar anuncio</button>
+        </div>`:`<div style="margin-top:12px;border-top:1px solid var(--bd);padding-top:10px;font-size:12px;color:var(--t3)">Anuncio cerrado. Las conversaciones se conservan como registro.</div>`}
+      </div>
+    </div>`;
+  }
+
+  let html='';
+  if(activos.length>0){
+    html+='<div class="slbl" style="margin-bottom:.75rem">Mis pedidos activos</div>';
+    for(const p of activos) html += await renderPedido(p,false);
+  }
+  if(cerrados.length>0){
+    html+='<div class="slbl" style="margin:1.5rem 0 .75rem">Mis pedidos cerrados</div>';
+    for(const p of cerrados) html += await renderPedido(p,true);
+  }
+  // Servicios que ofrezco como proveedor
+  const {data:misServicios} = await sb.from('proveedores').select('*').eq('usuario_id',G.u.id).order('created_at',{ascending:false});
+  if(misServicios && misServicios.length>0){
+    html+='<div class="slbl" style="margin:1.5rem 0 .75rem">Mis servicios ofrecidos</div>';
+    for(const s of misServicios){
+      html+=`<div class="fc" style="margin-bottom:12px;${s.status==='cerrado'?'opacity:.75':''}">
+        <div class="fct"><div><div class="fctt">${s.categoria}</div><div class="fcm">Servicio ofrecido · ${timeAgo(s.created_at)}</div></div>
+        <span class="pill ${s.status==='activo'?'pg_':s.status==='pendiente'?'pa_':'pr_'}">${s.status==='activo'?'✓ activo':s.status==='pendiente'?'en revisión':s.status==='cerrado'?'cerrado':s.status}</span></div>
+        <div class="fcd">${s.descripcion||''}</div>
+        <div style="font-size:12px;color:var(--t3);border-top:1px solid var(--bd);padding-top:10px;margin-top:6px">Precio base: S/ ${s.precio_base||'?'} · ${s.total_reviews>0?`⭐ ${s.rating} (${s.total_reviews} reseñas)`:'Sin reseñas aún'}</div>
+        <div style="display:flex;gap:6px;margin-top:10px;border-top:1px solid var(--bd);padding-top:10px">
+          ${s.status!=='cerrado'?`<button class="btn bsm" onclick="cerrarServicio('${s.id}')">Cerrar servicio</button>`:`<button class="btn bsm" style="color:var(--g);border-color:var(--g3)" onclick="reactivarServicio('${s.id}')">Reactivar</button>`}
+          <button class="btn bsm" style="color:var(--red);border-color:var(--red)" onclick="eliminarMiServicio('${s.id}')">Eliminar</button>
+        </div>
+      </div>`;
+    }
+  }
+  if(html==='') {
+    cont.innerHTML='<div class="loading">Aún no has publicado ningún anuncio. <span style="color:var(--g);cursor:pointer" onclick="go(\'publicar\')">Publicar uno</span></div>';
+  } else {
+    cont.innerHTML=html;
+  }
+}
+
+async function cerrarPedido(id) {
+  if(!confirm('¿Cerrar este anuncio? Dejará de aparecer en el listado público, pero conservarás las conversaciones.')) return;
+  await sb.from('pedidos').update({status:'cerrado'}).eq('id',id);
+  loadMisAnuncios();
+}
+
+async function contratarYcalificar(convoId, pedidoId, nombreProv) {
+  G.reviewConvoId = convoId;
+  G.reviewPedidoId = pedidoId;
+  go('review');
+}
+
+async function cerrarServicio(id) {
+  if(!confirm('¿Cerrar este servicio? Dejará de aparecer en el listado público.')) return;
+  await sb.from('proveedores').update({status:'cerrado'}).eq('id',id);
+  loadMisAnuncios();
+}
+
+async function reactivarServicio(id) {
+  await sb.from('proveedores').update({status:'activo'}).eq('id',id);
+  loadMisAnuncios();
+}
+
+async function eliminarMiServicio(id) {
+  if(!confirm('¿Eliminar este servicio para siempre? Se borrarán también sus conversaciones. Esta acción no se puede deshacer.')) return;
+  await sb.from('proveedores').delete().eq('id',id);
+  loadMisAnuncios();
+}
+
+function setStar(n) {
+  G.star=n;
+  document.querySelectorAll('.stb').forEach((b,i)=>b.classList.toggle('lit',i<n));
+}
+
+async function subRev() {
+  const amt=document.getElementById('rva').value;
+  const txt=document.getElementById('rvt').value;
+  if(!G.star||!amt){alert('Completa la calificación y el monto.');return;}
+  const comm=Math.round(parseFloat(amt)*0.05);
+  const {data:conv} = await sb.from('conversaciones').select('proveedor_id,interesado_id,cliente_id').eq('id',G.reviewConvoId).single();
+  if(conv) {
+    const provId = conv.proveedor_id;
+    // La persona que prestó el servicio: si hay proveedor registrado úsalo; si no, es el interesado
+    const calificadoUserId = conv.interesado_id;
+    try {
+      if(provId) {
+        const {data:res} = await sb.from('resenas').insert({proveedor_id:provId,cliente_id:G.u.id,estrellas:G.star,comentario:txt,monto_pagado:parseFloat(amt)}).select().single();
+        if(res) await sb.from('comisiones').insert({proveedor_id:provId,resena_id:res.id,monto:comm,status:'pendiente'});
+        // Recalcular rating promedio del proveedor
+        const {data:todas} = await sb.from('resenas').select('estrellas').eq('proveedor_id',provId);
+        if(todas && todas.length>0){
+          const prom = todas.reduce((a,r)=>a+r.estrellas,0)/todas.length;
+          await sb.from('proveedores').update({rating:Math.round(prom*10)/10, total_reviews:todas.length}).eq('id',provId);
+        }
+      } else {
+        // Pedido entre usuarios: registrar reseña sin proveedor y la comisión igual
+        await sb.from('resenas').insert({cliente_id:G.u.id,estrellas:G.star,comentario:txt,monto_pagado:parseFloat(amt)});
+        await sb.from('comisiones').insert({monto:comm,status:'pendiente'});
+      }
+    } catch(e){ console.log('Error guardando reseña:',e); }
+    await sb.from('conversaciones').update({status:'completada',monto_acordado:parseFloat(amt)}).eq('id',G.reviewConvoId);
+  }
+  if(G.reviewPedidoId) {
+    await sb.from('pedidos').update({status:'resuelto'}).eq('id',G.reviewPedidoId);
+    G.reviewPedidoId=null;
+  }
+  // Limpiar formulario
+  G.star=0;
+  document.querySelectorAll('.stb').forEach(b=>b.classList.remove('lit'));
+  document.getElementById('rva').value='';
+  document.getElementById('rvt').value='';
+  const ok=document.getElementById('rvok');
+  ok.textContent=`✓ Reseña enviada. Comisión de S/ ${comm} registrada como pendiente.`;
+  ok.style.display='flex';
+  G.reviewConvoId=null;
+  setTimeout(()=>{ok.style.display='none';go('home');},2000);
+}
+
+async function loadAdmin() {
+  const [{data:provs},{data:peds},{data:cms},{data:acuerdos},{data:usuarios}] = await Promise.all([
+    sb.from('proveedores').select('*'),
+    sb.from('pedidos').select('*,usuarios(nombre,apellidos,email,whatsapp)'),
+    sb.from('comisiones').select('*,proveedores(nombre,usuario_id),resenas(monto_pagado)'),
+    sb.from('conversaciones').select('*,proveedores(nombre),interesado:interesado_id(nombre,apellidos,email,whatsapp),cliente:cliente_id(nombre,apellidos,email,whatsapp),pedidos(titulo)').not('monto_acordado','is',null).order('created_at',{ascending:false}),
+    sb.from('usuarios').select('*').order('created_at',{ascending:false})
+  ]);
+  G.adminUsuarios = usuarios||[];
+  const act=(provs||[]).filter(p=>p.status==='activo').length;
+  const pen=(provs||[]).filter(p=>p.status==='pendiente').length;
+  const cp=(cms||[]).filter(c=>c.status==='pendiente').reduce((a,c)=>a+c.monto,0);
+  const abiertos=(peds||[]).filter(p=>p.status==='abierto').length;
+  const cobrado=(cms||[]).filter(c=>c.status==='pagado').reduce((a,c)=>a+c.monto,0);
+  document.getElementById('as').innerHTML=`
+    <div class="sc"><div class="scl">Proveedores activos</div><div class="scv">${act}</div><div class="scs sg">verificados</div></div>
+    <div class="sc"><div class="scl">En revisión</div><div class="scv">${pen}</div><div class="scs sa">pendientes</div></div>
+    <div class="sc"><div class="scl">Pedidos abiertos</div><div class="scv">${abiertos}</div><div class="scs sg">activos</div></div>
+    <div class="sc"><div class="scl">Por cobrar</div><div class="scv" style="color:var(--g)">S/ ${cp}</div><div class="scs sa">Yape pendiente</div></div>`;
+  // Agrupar comisiones reales por mes (últimos 6 meses)
+  const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const ahora=new Date();
+  const buckets=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(ahora.getFullYear(),ahora.getMonth()-i,1);
+    buckets.push({label:meses[d.getMonth()],year:d.getFullYear(),month:d.getMonth(),total:0});
+  }
+  (cms||[]).forEach(c=>{
+    const d=new Date(c.created_at);
+    const b=buckets.find(x=>x.month===d.getMonth()&&x.year===d.getFullYear());
+    if(b) b.total+=c.monto;
+  });
+  const mx=Math.max(...buckets.map(b=>b.total),1);
+  document.getElementById('mch').innerHTML=buckets.map(b=>`<div class="bar" style="height:${Math.max(Math.round((b.total/mx)*100),3)}%" title="S/ ${b.total}"></div>`).join('');
+  document.getElementById('chl').innerHTML=buckets.map(b=>`<span>${b.label}</span>`).join('');
+  atab(G.aTab,null,provs,peds,cms,acuerdos);
+}
+
+function atab(t,btn,provs,peds,cms,acuerdos) {
+  G.aTab=t;
+  if(btn){document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');}
+  if(!provs) {loadAdmin();return;}
+  const c=document.getElementById('ac');
+  if(t==='p'){
+    c.innerHTML=`<div class="tw"><div class="th2">Todos los proveedores</div>
+      <table><thead><tr><th>Nombre</th><th>Categoría</th><th>Estado</th><th>Trabajos</th><th>Acciones</th></tr></thead>
+      <tbody>${(provs||[]).map((p)=>`<tr>
+        <td style="font-weight:500">${p.nombre}</td><td style="color:var(--t2)">${p.categoria}</td>
+        <td><span class="pill ${p.status==='activo'?'pg_':p.status==='pendiente'?'pa_':'pr_'}">${p.status}</span></td>
+        <td style="color:var(--t2)">${p.total_trabajos}</td>
+        <td>${p.status==='pendiente'?`<button class="act actg" onclick="apP('${p.id}')">Aprobar</button>`:''}${p.status==='bloqueado'?`<button class="act actg" onclick="apP('${p.id}')">Desbloquear</button>`:`<button class="act actr" onclick="blP('${p.id}')">Bloquear</button>`}<button class="act actr" onclick="delProv('${p.id}')">Eliminar</button></td>
+      </tr>`).join('')}</tbody></table></div>`;
+  } else if(t==='r'){
+    c.innerHTML=`<div class="tw"><div class="th2">Pedidos publicados</div>
+      <table><thead><tr><th>Pedido</th><th>Categoría</th><th>Presupuesto</th><th>Publicado por (contacto)</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <tbody>${(peds||[]).map(p=>`<tr>
+        <td style="font-weight:500">${p.titulo}</td><td style="color:var(--t2)">${p.categoria}</td>
+        <td>S/ ${p.presupuesto||'?'}</td>
+        <td><div style="font-weight:500">${p.usuarios?.nombre||'?'} ${p.usuarios?.apellidos||''}</div><div style="font-size:11px;color:var(--t3)">${p.usuarios?.email||''}<br>${p.usuarios?.whatsapp||''}</div></td>
+        <td><span class="pill ${p.status==='abierto'?'pg_':p.status==='resuelto'?'pp_':p.status==='en curso'?'pa_':'pp_'}">${p.status}</span></td>
+        <td><button class="act actr" onclick="delPed('${p.id}')">Eliminar</button></td>
+      </tr>`).join('')}</tbody></table></div>`;
+  } else if(t==='d'){
+    const totalAcordado=(acuerdos||[]).reduce((a,c)=>a+(c.monto_acordado||0),0);
+    c.innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.25rem">
+        <div class="sc"><div class="scl">Acuerdos cerrados</div><div class="scv">${(acuerdos||[]).length}</div><div class="scs sg">tratos registrados</div></div>
+        <div class="sc"><div class="scl">Volumen total acordado</div><div class="scv" style="color:var(--g)">S/ ${totalAcordado}</div><div class="scs sg">movido en la plataforma</div></div>
+      </div>
+      <div class="tw"><div class="th2">Acuerdos cerrados (privacidad de mensajes protegida)</div>
+      ${(acuerdos||[]).length===0?'<div class="loading" style="padding:1.5rem">Aún no hay acuerdos cerrados.</div>':
+      `<table><thead><tr><th>Interesado (contacto)</th><th>Dueño anuncio (contacto)</th><th>Servicio</th><th>Monto</th><th>Comisión 5%</th><th>Estado</th><th>Acción</th></tr></thead>
+      <tbody>${(acuerdos||[]).map(a=>`<tr>
+        <td><div style="font-weight:500">${a.interesado?.nombre||'?'} ${a.interesado?.apellidos||''}</div><div style="font-size:11px;color:var(--t3)">${a.interesado?.email||''}<br>${a.interesado?.whatsapp||''}</div></td>
+        <td><div style="font-weight:500">${a.cliente?.nombre||a.proveedores?.nombre||'?'} ${a.cliente?.apellidos||''}</div><div style="font-size:11px;color:var(--t3)">${a.cliente?.email||''}<br>${a.cliente?.whatsapp||''}</div></td>
+        <td style="color:var(--t2)">${a.titulo_ref||a.pedidos?.titulo||'Servicio'}</td>
+        <td style="font-weight:500">S/ ${a.monto_acordado}</td>
+        <td style="color:var(--g);font-weight:500">S/ ${Math.round(a.monto_acordado*0.05)}</td>
+        <td><span class="pill ${a.status==='completada'?'pg_':a.status==='activa'?'pa_':'pp_'}">${a.status==='completada'?'completado':a.status==='activa'?'en proceso':a.status}</span></td>
+        <td><button class="act actr" onclick="delAcuerdo('${a.id}')">Eliminar</button></td>
+      </tr>`).join('')}</tbody></table>`}
+      </div>`;
+  } else if(t==='c'){
+    const pp=(cms||[]).filter(c=>c.status==='pendiente').reduce((a,c)=>a+c.monto,0);
+    const cb=(cms||[]).filter(c=>c.status==='pagado').reduce((a,c)=>a+c.monto,0);
+    c.innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.25rem">
+        <div class="sc"><div class="scl">Por cobrar</div><div class="scv" style="color:var(--amb)">S/ ${pp}</div><div class="scs sa">Yape pendiente</div></div>
+        <div class="sc"><div class="scl">Total cobrado</div><div class="scv" style="color:var(--g)">S/ ${cb}</div><div class="scs sg">recibido</div></div>
+      </div>
+      <div class="tw"><div class="th2">Registro de comisiones</div>
+        ${(cms||[]).map((cm,i)=>`<div class="crow">
+          <div><div style="font-size:13px;font-weight:500;color:var(--t)">${cm.proveedores?.nombre||'Proveedor'}</div>
+          <div style="font-size:12px;color:var(--t3)">S/ ${cm.resenas?.monto_pagado||'?'} cobrado · ${timeAgo(cm.created_at)}</div></div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+            <div style="text-align:right"><div style="font-size:16px;font-weight:500;color:var(--g)">S/ ${cm.monto}</div>
+            <span class="pill ${cm.status==='pendiente'?'pa_':cm.status==='no_pagado'?'pr_':'pg_'}">${cm.status==='no_pagado'?'no pagado':cm.status}</span></div>
+            <div style="display:flex;gap:4px">
+              ${cm.status!=='pagado'?`<button class="act actg" onclick="mP('${cm.id}')">Pagado</button>`:''}
+              ${cm.status!=='no_pagado'?`<button class="act actr" onclick="mNoPagado('${cm.id}','${cm.proveedor_id||''}')">No pagado</button>`:''}
+              <button class="act actr" onclick="delComision('${cm.id}')">Eliminar</button>
+            </div>
+          </div>
+        </div>`).join('')||'<div class="loading" style="padding:1.5rem">Aún no hay comisiones registradas.</div>'}
+      </div>`;
+  } else if(t==='u'){
+    const us = G.adminUsuarios||[];
+    c.innerHTML=`<div class="tw"><div class="th2">Usuarios registrados (${us.length})</div>
+      ${us.length===0?'<div class="loading" style="padding:1.5rem">Aún no hay usuarios registrados.</div>':
+      `<table><thead><tr><th>Nombre</th><th>Correo</th><th>WhatsApp</th><th>Registrado</th></tr></thead>
+      <tbody>${us.map(u=>`<tr>
+        <td style="font-weight:500">${u.nombre||'?'} ${u.apellidos||''}</td>
+        <td style="color:var(--t2)">${u.email||'—'}</td>
+        <td style="color:var(--t2)">${u.whatsapp||'—'}</td>
+        <td style="color:var(--t3)">${u.created_at?timeAgo(u.created_at):'—'}</td>
+      </tr>`).join('')}</tbody></table>`}
+      </div>`;
+  } else if(t==='a'){
+    c.innerHTML=`<div class="af">
+      <div style="font-size:13px;font-weight:500;color:var(--t);margin-bottom:1rem">Agregar proveedor manualmente</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.875rem">
+        <div><label class="fl">Nombre completo</label><input class="fi" id="an" placeholder="Nombre Apellido" /></div>
+        <div><label class="fl">Categoría</label><select class="fi" id="acat"><option>Gasfitería</option><option>Electricidad</option><option>Pintura</option><option>Instalación TV/RAC</option><option>Mudanzas</option><option>Contabilidad</option><option>Educación</option></select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.875rem">
+        <div><label class="fl">WhatsApp</label><input class="fi" id="aph" placeholder="951234567" /></div>
+        <div><label class="fl">Precio base (S/)</label><input class="fi" id="apr" type="number" placeholder="50" /></div>
+      </div>
+      <div style="margin-bottom:1rem"><label class="fl">Descripción</label><input class="fi" id="ades" placeholder="Breve descripción..." /></div>
+      <button class="btn bg_" onclick="addP()">Agregar y activar proveedor</button>
+    </div>`;
+  }
+}
+
+async function apP(id){await sb.from('proveedores').update({status:'activo'}).eq('id',id);loadAdmin();}
+async function blP(id){await sb.from('proveedores').update({status:'bloqueado'}).eq('id',id);loadAdmin();}
+async function mP(id){await sb.from('comisiones').update({status:'pagado'}).eq('id',id);loadAdmin();}
+async function mNoPagado(id, provUserId){
+  await sb.from('comisiones').update({status:'no_pagado'}).eq('id',id);
+  // Buscar el usuario del proveedor para avisarle
+  let avisarA = provUserId;
+  if(!avisarA){
+    const {data:cm} = await sb.from('comisiones').select('proveedor_id').eq('id',id).single();
+    if(cm?.proveedor_id){
+      const {data:pv} = await sb.from('proveedores').select('usuario_id').eq('id',cm.proveedor_id).single();
+      avisarA = pv?.usuario_id;
+    }
+  }
+  if(avisarA){
+    await sb.from('notificaciones').insert({usuario_id:avisarA,tipo:'advertencia',mensaje:'⚠️ Tienes una comisión pendiente de pago a YoLoHago. Por favor regulariza tu pago vía Yape lo antes posible. De no hacerlo, tu cuenta será suspendida.'});
+    alert('Comisión marcada como NO pagada. Se envió una advertencia al proveedor.');
+  } else {
+    alert('Comisión marcada como NO pagada. (Esta comisión no tiene proveedor registrado vinculado, no se pudo enviar aviso automático.)');
+  }
+  loadAdmin();
+}
+async function delComision(id){if(!confirm('¿Eliminar este registro de comisión? Esta acción no se puede deshacer.'))return;await sb.from('comisiones').delete().eq('id',id);loadAdmin();}
+async function delAcuerdo(id){if(!confirm('¿Eliminar este acuerdo del registro? Se borrará la conversación asociada. Esta acción no se puede deshacer.'))return;await sb.from('conversaciones').delete().eq('id',id);loadAdmin();}
+async function delProv(id){if(!confirm('¿Eliminar este proveedor para siempre? Se borrarán también sus chats. Esta acción no se puede deshacer.'))return;await sb.from('proveedores').delete().eq('id',id);loadAdmin();}
+async function delPed(id){if(!confirm('¿Eliminar este anuncio para siempre? Se borrarán también todos sus chats. Esta acción no se puede deshacer.'))return;await sb.from('pedidos').delete().eq('id',id);loadAdmin();}
+
+async function addP(){
+  const n=document.getElementById('an').value.trim();
+  const cat=document.getElementById('acat').value;
+  if(!n){alert('Ingresa el nombre.');return;}
+  await sb.from('proveedores').insert({nombre:n,categoria:cat,whatsapp:document.getElementById('aph').value,precio_base:document.getElementById('apr').value||null,descripcion:document.getElementById('ades').value,status:'activo',rating:0,total_reviews:0,total_trabajos:0});
+  alert(`"${n}" agregado y visible en la app.`);
+  loadAdmin();
+}
+
+function updateNav(){
+  const nr=document.getElementById('nr');
+  if(!G.u){
+    nr.innerHTML=`<button class="nb gh" onclick="go('login')">Ingresar</button><button class="nb s" onclick="go('register')">Crear cuenta</button>`;
+  } else if(G.u.email===ADMIN_EMAIL){
+    nr.innerHTML=`
+      <button class="nb gh" onclick="go('home')">Inicio</button>
+      <button class="nb gh" onclick="go('publicar')">+ Publicar anuncio</button>
+      <button class="nb gh" onclick="go('misanuncios')">Mis anuncios</button>
+      <button class="nb gh" onclick="go('chat')">💬 Mensajes <span id="notif-badge" style="display:none;background:var(--red);color:#fff;border-radius:999px;padding:1px 6px;font-size:10px;margin-left:2px"></span></button>
+      <button class="nb s" onclick="go('admin')">🛡️ Panel</button>
+      <button class="nb gh" onclick="logout()">Salir</button>`;
+  } else {
+    const meta=G.u.user_metadata||{};
+    const name=meta.nombre||G.u.email.split('@')[0];
+    nr.innerHTML=`
+      <button class="nb gh" onclick="go('home')">Inicio</button>
+      <button class="nb gh" onclick="rlog('publicar')">+ Publicar anuncio</button>
+      <button class="nb gh" onclick="rlog('misanuncios')">Mis anuncios</button>
+      <button class="nb gh" onclick="rlog('chat')">💬 Mensajes <span id="notif-badge" style="display:none;background:var(--red);color:#fff;border-radius:999px;padding:1px 6px;font-size:10px;margin-left:2px"></span></button>
+      <button class="nb gh" style="color:var(--g)" onclick="go('profile')">👤 ${name}</button>`;
+  }
+  if(G.u) setTimeout(actualizarNotif,500);
+}
+
+init();
+</script>
+</body>
+</html>
