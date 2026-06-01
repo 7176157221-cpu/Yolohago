@@ -344,8 +344,18 @@ tr:hover td{background:rgba(255,255,255,.02)}
   </div>
   <div class="fg"><label class="fl">Monto final pagado (S/)</label><input class="fi" id="rva" type="number" placeholder="120" /></div>
   <div class="fg"><label class="fl">Reseña</label><textarea class="fi" id="rvt" rows="3" style="resize:vertical" placeholder="¿Cómo fue el servicio?"></textarea></div>
+  <div class="fg"><label class="fl">Foto del resultado (opcional)</label><input class="fi" id="rvfoto" type="file" accept="image/*" style="padding:8px" /><div style="font-size:11px;color:var(--t3);margin-top:4px">Muestra cómo quedó el trabajo</div></div>
   <button class="btn bg_" style="width:100%;padding:11px" onclick="subRev()">Enviar reseña y confirmar pago</button>
 </div></div></div>
+
+<!-- PERFIL PÚBLICO -->
+<div id="pg-perfilpub" class="pg"><div class="fw">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.5rem">
+    <button class="btn bsm" onclick="history.length>1?history.back():go('home')">← Volver</button>
+    <div style="font-size:16px;font-weight:500">Perfil</div>
+  </div>
+  <div id="perfilpub-cont"><div class="loading"><span class="spin"></span>Cargando perfil...</div></div>
+</div></div>
 
 <!-- PERFIL -->
 <div id="pg-profile" class="pg"><div class="fw">
@@ -365,6 +375,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div id="datosok" class="sok" style="display:none">✓ Datos actualizados correctamente.</div>
     <div class="fg"><label class="fl">WhatsApp</label><input class="fi" id="prof-wsp" placeholder="951234567" /></div>
     <div class="fg"><label class="fl">Dirección</label><input class="fi" id="prof-ubic" placeholder="Jr. Amazonas 540, cerca al mercado" /><div style="font-size:11px;color:var(--t3);margin-top:4px">Se comparte solo cuando cierras un acuerdo</div></div>
+    <div class="fg"><label class="fl">Sobre mí (bio profesional)</label><textarea class="fi" id="prof-bio" rows="3" style="resize:vertical" placeholder="Ej: Electricista con 5 años de experiencia. Trabajos garantizados y puntuales."></textarea><div style="font-size:11px;color:var(--t3);margin-top:4px">Aparece en tu perfil público, ayuda a que te conozcan</div></div>
     <button class="btn bg_" onclick="guardarDatos()">Guardar cambios</button>
   </div>
   <div class="prof-sec">
@@ -578,16 +589,18 @@ async function loadHome() {
       const esAdmin = G.u && G.u.email===ADMIN_EMAIL;
       fr.innerHTML = reviews.map(r=>{
         const puedeBorrar = esAdmin || (G.u && r.cliente_id===G.u.id);
+        const nombreClick = r.calificado_id ? `onclick="verPerfilPublico('${r.calificado_id}')" style="cursor:pointer;font-size:13px;font-weight:500;color:var(--g);text-decoration:underline"` : `style="font-size:13px;font-weight:500;color:var(--t)"`;
         return `
         <div class="fc" style="margin-bottom:10px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
             <div style="display:flex;align-items:center;gap:9px">
-              <div class="av alg">${ini(r.calificado_nombre||'P')}</div>
-              <div><div style="font-size:13px;font-weight:500;color:var(--t)">${r.calificado_nombre||'Proveedor'}</div><div style="font-size:11px;color:var(--t3)">Calificado por ${r.calificador_nombre||'un cliente'} · ${timeAgo(r.created_at)}</div></div>
+              <div class="av alg" ${r.calificado_id?`onclick="verPerfilPublico('${r.calificado_id}')" style="cursor:pointer"`:''}>${ini(r.calificado_nombre||'P')}</div>
+              <div><div ${nombreClick}>${r.calificado_nombre||'Proveedor'}</div><div style="font-size:11px;color:var(--t3)">Calificado por ${r.calificador_nombre||'un cliente'} · ${timeAgo(r.created_at)}</div></div>
             </div>
             <span class="stars" style="font-size:14px">${'★'.repeat(r.estrellas)}${'☆'.repeat(5-r.estrellas)}</span>
           </div>
           ${r.comentario?`<div style="font-size:13px;color:var(--t2);line-height:1.5">"${r.comentario}"</div>`:'<div style="font-size:12px;color:var(--t3);font-style:italic">Sin comentario</div>'}
+          ${r.foto?`<img src="${r.foto}" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-top:8px;cursor:pointer" onclick="window.open('${r.foto}','_blank')"/>`:''}
           ${puedeBorrar?`<div style="margin-top:8px;text-align:right"><button class="btn bsm" style="color:var(--red);border-color:var(--red)" onclick="borrarResena('${r.id}')">Eliminar reseña</button></div>`:''}
         </div>`;}).join('');
     } else {
@@ -750,6 +763,43 @@ async function logout() {
   go('home');
 }
 
+async function verPerfilPublico(userId){
+  if(!G.u){ alert('Inicia sesión para ver perfiles.'); G._d='home'; go('login'); return; }
+  go('perfilpub');
+  const cont=document.getElementById('perfilpub-cont');
+  cont.innerHTML='<div class="loading"><span class="spin"></span>Cargando perfil...</div>';
+  // Datos del usuario
+  const {data:u}=await sb.from('usuarios').select('nombre,apellidos,bio').eq('id',userId).maybeSingle();
+  const nombre=`${u?.nombre||''} ${u?.apellidos||''}`.trim()||'Usuario';
+  // Reseñas recibidas (donde fue calificado)
+  const {data:reviews}=await sb.from('resenas').select('*').eq('calificado_id',userId).order('created_at',{ascending:false});
+  const total=(reviews||[]).length;
+  const prom= total>0 ? (reviews.reduce((a,r)=>a+r.estrellas,0)/total) : 0;
+  // Servicios que ofrece (proveedores activos)
+  const {data:servs}=await sb.from('proveedores').select('categoria,descripcion,status').eq('usuario_id',userId).eq('status','activo');
+  cont.innerHTML=`
+    <div class="fcard" style="text-align:center;margin-bottom:1rem">
+      <div class="av alg" style="width:64px;height:64px;font-size:22px;margin:0 auto 12px">${ini(nombre)}</div>
+      <div style="font-size:18px;font-weight:600;color:var(--t)">${nombre}</div>
+      ${total>0?`<div style="margin-top:6px"><span class="stars" style="font-size:16px">${'★'.repeat(Math.round(prom))}${'☆'.repeat(5-Math.round(prom))}</span> <span style="color:var(--t2);font-size:13px">${prom.toFixed(1)} · ${total} ${total===1?'reseña':'reseñas'}</span></div>`:'<div style="margin-top:6px;color:var(--t3);font-size:13px">Aún sin reseñas</div>'}
+      ${u?.bio?`<div style="margin-top:12px;font-size:13px;color:var(--t2);line-height:1.5;font-style:italic">"${u.bio}"</div>`:''}
+    </div>
+    ${servs&&servs.length>0?`<div class="prof-sec"><div style="font-size:13px;font-weight:500;margin-bottom:10px">🛠️ Servicios que ofrece</div>${servs.map(s=>`<div style="padding:8px 0;border-bottom:1px solid var(--bd)"><div style="font-size:13px;color:var(--g);font-weight:500">${s.categoria}</div>${s.descripcion?`<div style="font-size:12px;color:var(--t2);margin-top:2px">${s.descripcion}</div>`:''}</div>`).join('')}</div>`:''}
+    <div class="prof-sec">
+      <div style="font-size:13px;font-weight:500;margin-bottom:12px">⭐ Trabajos realizados y calificaciones (${total})</div>
+      ${total>0? reviews.map(r=>`
+        <div style="padding:10px 0;border-bottom:1px solid var(--bd)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span class="stars" style="font-size:13px">${'★'.repeat(r.estrellas)}${'☆'.repeat(5-r.estrellas)}</span>
+            <span style="font-size:11px;color:var(--t3)">${timeAgo(r.created_at)}</span>
+          </div>
+          ${r.comentario?`<div style="font-size:13px;color:var(--t2)">"${r.comentario}"</div>`:''}
+          <div style="font-size:11px;color:var(--t3);margin-top:3px">Por ${r.calificador_nombre||'un cliente'}</div>
+          ${r.foto?`<img src="${r.foto}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-top:6px;cursor:pointer" onclick="window.open('${r.foto}','_blank')"/>`:''}
+        </div>`).join('') : '<div style="color:var(--t3);font-size:13px">Esta persona aún no tiene trabajos calificados.</div>'}
+    </div>`;
+}
+
 async function loadProfile() {
   if(!G.u) return;
   const meta = G.u.user_metadata||{};
@@ -758,19 +808,22 @@ async function loadProfile() {
   document.getElementById('prof-email').textContent = G.u.email;
   document.getElementById('prof-av').textContent = ini(name.trim()||G.u.email);
   // Cargar whatsapp y ubicación actuales
-  const {data:u} = await sb.from('usuarios').select('whatsapp,ubicacion').eq('id',G.u.id).maybeSingle();
+  const {data:u} = await sb.from('usuarios').select('whatsapp,ubicacion,bio').eq('id',G.u.id).maybeSingle();
   if(u){
     document.getElementById('prof-wsp').value = u.whatsapp||'';
     document.getElementById('prof-ubic').value = u.ubicacion||'';
+    const bioEl=document.getElementById('prof-bio'); if(bioEl) bioEl.value = u.bio||'';
   }
 }
 
 async function guardarDatos() {
   const wsp = document.getElementById('prof-wsp').value.trim();
   const ubic = document.getElementById('prof-ubic').value.trim();
+  const bioEl = document.getElementById('prof-bio');
+  const bio = bioEl ? bioEl.value.trim() : '';
   if(!wsp){alert('El WhatsApp no puede quedar vacío.');return;}
   if(!ubic){alert('La dirección no puede quedar vacía.');return;}
-  await sb.from('usuarios').update({whatsapp:wsp,ubicacion:ubic}).eq('id',G.u.id);
+  await sb.from('usuarios').update({whatsapp:wsp,ubicacion:ubic,bio:bio}).eq('id',G.u.id);
   const ok=document.getElementById('datosok');
   ok.style.display='block';
   setTimeout(()=>{ok.style.display='none';},2500);
@@ -1228,8 +1281,12 @@ async function subRev() {
     let miNombre = 'Usuario';
     const {data:yo} = await sb.from('usuarios').select('nombre,apellidos').eq('id',G.u.id).maybeSingle();
     if(yo) miNombre = `${yo.nombre||''} ${yo.apellidos||''}`.trim();
+    // Subir foto del resultado si hay
+    let fotoUrl=null;
+    const fotoInput=document.getElementById('rvfoto');
+    if(fotoInput && fotoInput.files[0]){ fotoUrl = await subirImagen(fotoInput.files[0]); }
     try {
-      const resData = {cliente_id:G.u.id,estrellas:G.star,comentario:txt,monto_pagado:parseFloat(amt),calificado_id:calificadoUserId,calificado_nombre:calNombre,calificador_nombre:miNombre};
+      const resData = {cliente_id:G.u.id,estrellas:G.star,comentario:txt,monto_pagado:parseFloat(amt),calificado_id:calificadoUserId,calificado_nombre:calNombre,calificador_nombre:miNombre,foto:fotoUrl};
       if(provId) resData.proveedor_id = provId;
       const {data:res} = await sb.from('resenas').insert(resData).select().single();
       // Comisión
@@ -1257,6 +1314,7 @@ async function subRev() {
   document.querySelectorAll('.stb').forEach(b=>b.classList.remove('lit'));
   document.getElementById('rva').value='';
   document.getElementById('rvt').value='';
+  const fInput=document.getElementById('rvfoto'); if(fInput) fInput.value='';
   const ok=document.getElementById('rvok');
   ok.textContent=`✓ Reseña enviada. Comisión de S/ ${comm} registrada como pendiente.`;
   ok.style.display='flex';
@@ -1373,11 +1431,12 @@ function atab(t,btn,provs,peds,cms,acuerdos) {
     const us = G.adminUsuarios||[];
     c.innerHTML=`<div class="tw"><div class="th2">Usuarios registrados (${us.length})</div>
       ${us.length===0?'<div class="loading" style="padding:1.5rem">Aún no hay usuarios registrados.</div>':
-      `<table><thead><tr><th>Nombre</th><th>Correo</th><th>WhatsApp</th><th>Estado</th><th>Acciones</th></tr></thead>
+      `<table><thead><tr><th>Nombre</th><th>Correo</th><th>WhatsApp</th><th>Ubicación</th><th>Estado</th><th>Acciones</th></tr></thead>
       <tbody>${us.map(u=>`<tr>
         <td style="font-weight:500">${u.nombre||'?'} ${u.apellidos||''}</td>
         <td style="color:var(--t2)">${u.email||'—'}</td>
         <td style="color:var(--t2)">${u.whatsapp||'—'}</td>
+        <td style="color:var(--t2)">${u.ubicacion||'—'}</td>
         <td>${u.bloqueado?'<span class="pill pr_">bloqueado</span>':'<span class="pill pg_">activo</span>'}</td>
         <td><button class="act" onclick="verUsuario('${u.id}')">Ver</button>${u.bloqueado?`<button class="act actg" onclick="desbloquearUsuario('${u.id}')">Desbloquear</button>`:`<button class="act actr" onclick="bloquearUsuario('${u.id}')">Bloquear</button>`}</td>
       </tr>`).join('')}</tbody></table>`}
@@ -1440,27 +1499,43 @@ async function verUsuario(id){
   if(!cont)return;
   cont.innerHTML='<div class="loading" style="padding:1rem"><span class="spin"></span>Cargando detalle...</div>';
   const u=(G.adminUsuarios||[]).find(x=>x.id===id);
-  // Trabajos completados como proveedor/prestador (conversaciones completadas donde participó)
+  // Trabajos completados donde participó
   const [r1,r2] = await Promise.all([
-    sb.from('conversaciones').select('id,status,monto_acordado').eq('interesado_id',id),
-    sb.from('conversaciones').select('id,status,monto_acordado').eq('cliente_id',id)
+    sb.from('conversaciones').select('id,status').eq('interesado_id',id),
+    sb.from('conversaciones').select('id,status').eq('cliente_id',id)
   ]);
   const todas=[...(r1.data||[]),...(r2.data||[])];
   const completados=todas.filter(c=>c.status==='completada').length;
-  // Cuánto debe: comisiones pendientes de sus servicios como proveedor
+  // Comisiones por DOS vías:
+  // 1) Por sus servicios registrados (proveedor_id)
+  // 2) Por reseñas donde él fue el calificado (prestó servicio en un pedido)
+  let comisiones=[];
   const {data:provs}=await sb.from('proveedores').select('id').eq('usuario_id',id);
-  let debe=0;
   if(provs && provs.length>0){
     const provIds=provs.map(p=>p.id);
-    const {data:coms}=await sb.from('comisiones').select('monto,status').in('proveedor_id',provIds);
-    debe=(coms||[]).filter(c=>c.status==='pendiente'||c.status==='no_pagado').reduce((a,c)=>a+c.monto,0);
+    const {data:c1}=await sb.from('comisiones').select('id,monto,status').in('proveedor_id',provIds);
+    if(c1) comisiones.push(...c1);
   }
+  // Reseñas donde fue calificado → sus comisiones
+  const {data:resenas}=await sb.from('resenas').select('id').eq('calificado_id',id);
+  if(resenas && resenas.length>0){
+    const resIds=resenas.map(r=>r.id);
+    const {data:c2}=await sb.from('comisiones').select('id,monto,status').in('resena_id',resIds);
+    if(c2) comisiones.push(...c2);
+  }
+  // Quitar duplicados por id
+  const vistas=new Set(); comisiones=comisiones.filter(c=>{if(vistas.has(c.id))return false;vistas.add(c.id);return true;});
+  const pendiente=comisiones.filter(c=>c.status==='pendiente'||c.status==='no_pagado').reduce((a,c)=>a+c.monto,0);
+  const pagada=comisiones.filter(c=>c.status==='pagado').reduce((a,c)=>a+c.monto,0);
+  const totalComisiones=pendiente+pagada;
   cont.innerHTML=`<div class="tw" style="margin-top:1rem"><div class="th2">Detalle: ${u?.nombre||''} ${u?.apellidos||''}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:1rem">
       <div class="sc"><div class="scl">Trabajos completados</div><div class="scv">${completados}</div><div class="scs sg">en la plataforma</div></div>
-      <div class="sc"><div class="scl">Comisiones por pagar</div><div class="scv" style="color:${debe>0?'var(--amb)':'var(--g)'}">S/ ${debe}</div><div class="scs ${debe>0?'sa':'sg'}">${debe>0?'pendiente':'al día'}</div></div>
+      <div class="sc"><div class="scl">Total comisiones generadas</div><div class="scv">S/ ${totalComisiones}</div><div class="scs sg">${comisiones.length} en total</div></div>
+      <div class="sc"><div class="scl">Comisiones pendientes</div><div class="scv" style="color:${pendiente>0?'var(--amb)':'var(--g)'}">S/ ${pendiente}</div><div class="scs ${pendiente>0?'sa':'sg'}">${pendiente>0?'por pagar':'al día'}</div></div>
+      <div class="sc"><div class="scl">Comisiones pagadas</div><div class="scv" style="color:var(--g)">S/ ${pagada}</div><div class="scs sg">recibidas</div></div>
     </div>
-    <div style="padding:0 1rem 1rem;font-size:12px;color:var(--t3)">📧 ${u?.email||'—'} · 📱 ${u?.whatsapp||'—'}</div>
+    <div style="padding:0 1rem 1rem;font-size:12px;color:var(--t3)">📱 ${u?.whatsapp||'—'} · 📍 ${u?.ubicacion||'sin dirección'} · 📧 ${u?.email||'—'}</div>
   </div>`;
   cont.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
