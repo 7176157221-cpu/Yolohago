@@ -1003,23 +1003,37 @@ async function contactarProveedor(provId, provUserId, nombre) {
 }
 
 // Abre una vista de chat para una conversación que AÚN no existe (se crea al primer mensaje)
-// ---- Estado en línea ----
+// ---- Estado en línea (opción A: en línea solo con la app abierta en pantalla) ----
 async function marcarActividad(){
   if(!G.u) return;
   try{ await sb.from('usuarios').update({ultima_actividad:new Date().toISOString()}).eq('id',G.u.id); }catch(e){}
 }
+async function marcarDesconectado(){
+  if(!G.u) return;
+  // Poner una fecha vieja para que aparezca desconectado de inmediato
+  try{ await sb.from('usuarios').update({ultima_actividad:new Date(Date.now()-3600000).toISOString()}).eq('id',G.u.id); }catch(e){}
+}
 function iniciarPresencia(){
   marcarActividad();
   if(G._presenciaInt) clearInterval(G._presenciaInt);
-  // Actualizar cada 30 segundos mientras la app esté abierta
-  G._presenciaInt = setInterval(()=>{ if(document.visibilityState==='visible') marcarActividad(); }, 30000);
+  // Refrescar "en línea" cada 25s mientras la app esté visible
+  G._presenciaInt = setInterval(()=>{ if(document.visibilityState==='visible' && G.u) marcarActividad(); }, 25000);
+  // Detectar cuando se oculta o vuelve la app
+  if(!G._presenciaListener){
+    G._presenciaListener = true;
+    document.addEventListener('visibilitychange', ()=>{
+      if(document.visibilityState==='visible') marcarActividad();
+      else marcarDesconectado();
+    });
+    // Al cerrar/recargar la pestaña, intentar marcar desconectado
+    window.addEventListener('pagehide', ()=>{ marcarDesconectado(); });
+  }
 }
-// Devuelve texto de estado según última actividad
+// Devuelve estado según última actividad (en línea si < 40s)
 function estadoEnLinea(ultimaActividad){
   if(!ultimaActividad) return {txt:'Desconectado', online:false};
-  const diff = (Date.now() - new Date(ultimaActividad).getTime())/1000; // segundos
-  if(diff < 70) return {txt:'En línea', online:true};
-  // Texto de "última vez"
+  const diff = (Date.now() - new Date(ultimaActividad).getTime())/1000;
+  if(diff < 40) return {txt:'En línea', online:true};
   return {txt:'Desconectado', online:false};
 }
 
@@ -1176,11 +1190,28 @@ async function openConvo(id) {
   pintarMensajes(id, conv, otro, resMsgs.data, resOcultos.data);
   // Suscripción realtime
   if(G.msgChannel){ sb.removeChannel(G.msgChannel); }
-  G.msgChannel = sb.channel('msgs-'+id)
-    .on('postgres_changes', {event:'*', schema:'public', table:'mensajes', filter:'conversacion_id=eq.'+id}, () => {
+  G.msgChannel = sb.channel('msgs-'+id+'-'+Date.now())
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'mensajes', filter:'conversacion_id=eq.'+id}, () => {
+      if(G.activeConvo===id) renderMensajes(id);
+    })
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'mensajes', filter:'conversacion_id=eq.'+id}, () => {
       if(G.activeConvo===id) renderMensajes(id);
     })
     .subscribe();
+  // Refrescar el estado "en línea" del otro cada 20s mientras el chat esté abierto
+  if(G._estadoInt) clearInterval(G._estadoInt);
+  G._estadoInt = setInterval(async ()=>{
+    if(G.activeConvo!==id){ clearInterval(G._estadoInt); return; }
+    const otroId = G.convData?.otro && (G.convData.conv.interesado_id===G.u.id ? G.convData.conv.cliente_id : G.convData.conv.interesado_id);
+    if(!otroId) return;
+    const {data:u} = await sb.from('usuarios').select('ultima_actividad').eq('id',otroId).maybeSingle();
+    if(u && G.convData?.otro){
+      G.convData.otro.ultima_actividad = u.ultima_actividad;
+      const est = estadoEnLinea(u.ultima_actividad);
+      const elEstado = document.getElementById('estado-otro');
+      if(elEstado) elEstado.innerHTML = est.online?'<span style="color:var(--g)">● En línea</span>':'<span style="opacity:.7">○ Desconectado</span>';
+    }
+  }, 20000);
   setTimeout(()=>{ actualizarNotif(); }, 800);
 }
 
@@ -1257,7 +1288,7 @@ function pintarMensajes(id, conv, otro, msgsData, ocData) {
   cm.innerHTML = `
     <div class="ctop">
       <div class="av">${ini(nombreOtro)}</div>
-      <div><div style="font-size:14px;font-weight:500;color:var(--t)">${nombreOtro}</div><div style="font-size:12px;color:var(--t3)">${(()=>{const e=estadoEnLinea(otro?.ultima_actividad);return e.online?'<span style="color:var(--g)">● En línea</span>':'<span style="opacity:.7">○ Desconectado</span>';})()} · ${conv?.titulo_ref||''}</div></div>
+      <div><div style="font-size:14px;font-weight:500;color:var(--t)">${nombreOtro}</div><div style="font-size:12px;color:var(--t3)"><span id="estado-otro">${(()=>{const e=estadoEnLinea(otro?.ultima_actividad);return e.online?'<span style="color:var(--g)">● En línea</span>':'<span style="opacity:.7">○ Desconectado</span>';})()}</span> · ${conv?.titulo_ref||''}</div></div>
       <div style="margin-left:auto;display:flex;gap:6px">
         ${hayAcuerdo&&conv?.status!=='completada'&&(yoPago||esAdmin)?`<button class="btn bog bsm" onclick="G.reviewConvoId='${id}';go('review')">✓ Confirmar completado</button>`:''}
         ${hayAcuerdo&&conv?.status!=='completada'&&!yoPago&&!esAdmin?`<span style="font-size:11px;color:var(--t3);align-self:center">Esperando que el cliente confirme</span>`:''}
