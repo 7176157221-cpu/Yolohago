@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>YoLoHago — Servicios locales en Chachapoyas</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#16a35a">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -495,6 +498,7 @@ async function init() {
     }
     updateNav();
     suscribirMensajesGlobal();
+    pedirPermisoNotif();
     if(G.u.email === ADMIN_EMAIL) { go('admin'); }
     else {
       revisarNotificaciones();
@@ -547,12 +551,25 @@ async function guardarNuevaPass() {
 function suscribirMensajesGlobal() {
   if(G.globalChannel) return; // ya suscrito
   G.globalChannel = sb.channel('mensajes-global')
-    .on('postgres_changes', {event:'INSERT', schema:'public', table:'mensajes'}, (payload) => {
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'mensajes'}, async (payload) => {
       // Si el mensaje no es mío, actualizar badge y lista
       if(payload.new && payload.new.autor_id !== G.u?.id){
-        actualizarNotif();
-        // Si estoy en la pantalla de chat, refrescar la lista de conversaciones
-        if(document.getElementById('pg-chat')?.classList.contains('on')) loadChat();
+        // Verificar que el mensaje sea de una conversación donde YO participo
+        const convId = payload.new.conversacion_id;
+        const {data:conv} = await sb.from('conversaciones').select('cliente_id,interesado_id,titulo_ref').eq('id',convId).maybeSingle();
+        if(conv && (conv.cliente_id===G.u.id || conv.interesado_id===G.u.id)){
+          actualizarNotif();
+          if(document.getElementById('pg-chat')?.classList.contains('on')) loadChat();
+          // Notificación push (si no estoy viendo justo ese chat)
+          if(!(G.activeConvo===convId && document.visibilityState==='visible')){
+            const otroId = conv.interesado_id===G.u.id ? conv.cliente_id : conv.interesado_id;
+            const {data:autor} = await sb.from('usuarios').select('nombre').eq('id',payload.new.autor_id).maybeSingle();
+            const nombre = autor?.nombre || 'Alguien';
+            let preview = payload.new.tipo==='imagen' ? '📷 Te envió una foto' : (payload.new.tipo==='deal' ? '💰 Te propuso un precio' : (payload.new.contenido||'Nuevo mensaje'));
+            if(preview.length>60) preview = preview.slice(0,60)+'...';
+            mostrarNotificacion(`${nombre} te escribió`, preview);
+          }
+        }
       }
     })
     .subscribe();
@@ -819,7 +836,7 @@ async function doLogin() {
   G.u=data.user;G.session=data.session;
   updateNav();
   if(e===ADMIN_EMAIL) go('admin');
-  else { go(G._d||'home'); revisarNotificaciones(); }
+  else { go(G._d||'home'); revisarNotificaciones(); suscribirMensajesGlobal(); pedirPermisoNotif(); }
   G._d=null;
 }
 
@@ -1750,6 +1767,35 @@ function updateNav(){
       <button class="nb gh" style="color:var(--g)" onclick="go('profile')">👤 ${name}</button>`;
   }
   if(G.u) setTimeout(actualizarNotif,500);
+}
+
+// ---- PWA: registrar service worker y notificaciones ----
+let G_swReg = null;
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').then(reg=>{ G_swReg = reg; }).catch(()=>{});
+}
+
+// Pedir permiso de notificaciones (se llama tras iniciar sesión)
+function pedirPermisoNotif(){
+  if(!('Notification' in window)) return;
+  if(Notification.permission === 'default'){
+    // Pedir permiso con un pequeño retraso para no ser intrusivo
+    setTimeout(()=>{ Notification.requestPermission(); }, 3000);
+  }
+}
+
+// Mostrar una notificación local (cuando la app está abierta o en segundo plano)
+function mostrarNotificacion(titulo, cuerpo){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  // Si la pestaña está visible y el usuario está en el chat, no molestar
+  if(document.visibilityState === 'visible' && G.activeConvo) return;
+  try{
+    if(G_swReg && G_swReg.active){
+      G_swReg.active.postMessage({type:'NOTIFICACION', titulo, cuerpo});
+    } else {
+      new Notification(titulo, {body:cuerpo, icon:'/icon-192.png'});
+    }
+  }catch(e){}
 }
 
 init();
