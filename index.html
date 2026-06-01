@@ -45,6 +45,21 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background:linear-gradi
 .hcs{font-size:12px;color:var(--t2);line-height:1.45}
 .slbl{font-size:11px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
 .divl{height:1px;background:var(--bd);margin:2rem 0}
+.home-layout{display:grid;grid-template-columns:1fr 300px;gap:1.5rem;align-items:start}
+.home-side{position:sticky;top:72px}
+.rank-card{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:1.1rem}
+.rank-title{font-size:15px;font-weight:600;color:var(--t)}
+.rank-sub{font-size:11px;color:var(--t3);margin-bottom:.875rem}
+.rank-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);cursor:pointer}
+.rank-item:last-child{border-bottom:none}
+.rank-pos{font-size:14px;font-weight:700;width:22px;text-align:center;flex-shrink:0}
+.rank-info{flex:1;min-width:0}
+.rank-name{font-size:13px;font-weight:500;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-meta{font-size:11px;color:var(--t2)}
+@media(max-width:880px){
+  .home-layout{grid-template-columns:1fr}
+  .home-side{position:static;order:-1;margin-bottom:1rem}
+}
 .feed{display:grid;gap:10px;margin-bottom:2rem}
 .fc{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:1.25rem;transition:border-color .15s}
 .fc:hover{border-color:var(--bd2)}
@@ -201,14 +216,25 @@ tr:hover td{background:rgba(255,255,255,.02)}
       </div>
     </div>
   </div>
-  <div class="slbl">Pedidos publicados</div>
-  <div class="feed" id="fp"><div class="loading"><span class="spin"></span>Cargando pedidos...</div></div>
-  <div class="divl"></div>
-  <div class="slbl">Proveedores activos</div>
-  <div class="pgrid" id="fpr"><div class="loading"><span class="spin"></span>Cargando proveedores...</div></div>
-  <div class="divl"></div>
-  <div class="slbl">⭐ Reseñas y calificaciones</div>
-  <div id="freviews"><div class="loading"><span class="spin"></span>Cargando reseñas...</div></div>
+  <div class="home-layout">
+    <div class="home-main">
+      <div class="slbl">Pedidos publicados</div>
+      <div class="feed" id="fp"><div class="loading"><span class="spin"></span>Cargando pedidos...</div></div>
+      <div class="divl"></div>
+      <div class="slbl">Proveedores activos</div>
+      <div class="pgrid" id="fpr"><div class="loading"><span class="spin"></span>Cargando proveedores...</div></div>
+      <div class="divl"></div>
+      <div class="slbl">⭐ Reseñas y calificaciones</div>
+      <div id="freviews"><div class="loading"><span class="spin"></span>Cargando reseñas...</div></div>
+    </div>
+    <div class="home-side">
+      <div class="rank-card">
+        <div class="rank-title">🏆 Top proveedores</div>
+        <div class="rank-sub">Los más activos y mejor calificados</div>
+        <div id="ranking"><div class="loading" style="font-size:12px;padding:1rem"><span class="spin"></span>Cargando...</div></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- PUBLICAR (elegir) -->
@@ -605,6 +631,38 @@ async function loadHome() {
         </div>`;}).join('');
     } else {
       fr.innerHTML = '<div class="loading">Aún no hay reseñas. Las calificaciones aparecerán aquí cuando se completen trabajos.</div>';
+    }
+  }
+
+  // Ranking Top 10 proveedores (combina trabajos completados + estrellas)
+  const rk = document.getElementById('ranking');
+  if(rk){
+    const {data:provsRank} = await sb.from('proveedores').select('id,nombre,usuario_id,total_trabajos,rating,total_reviews,status').eq('status','activo');
+    if(provsRank && provsRank.length>0){
+      // Puntaje: cada trabajo vale 10 puntos + (rating promedio * cantidad de reseñas)
+      const conPuntaje = provsRank.map(p=>({
+        ...p,
+        puntaje: (p.total_trabajos||0)*10 + (p.rating||0)*(p.total_reviews||0)
+      }));
+      conPuntaje.sort((a,b)=>b.puntaje-a.puntaje);
+      const top = conPuntaje.slice(0,10);
+      const medallas = ['🥇','🥈','🥉'];
+      rk.innerHTML = top.map((p,i)=>{
+        const pos = medallas[i] || `${i+1}`;
+        const estrellas = p.rating>0 ? `★ ${p.rating.toFixed(1)}` : 'Sin reseñas';
+        const trabajos = (p.total_trabajos||0)>0 ? `${p.total_trabajos} ${p.total_trabajos===1?'trabajo':'trabajos'}` : 'Nuevo';
+        const click = p.usuario_id ? `onclick="verPerfilPublico('${p.usuario_id}')"` : '';
+        return `<div class="rank-item" ${click}>
+          <div class="rank-pos">${pos}</div>
+          <div class="av alg" style="width:32px;height:32px;font-size:12px;flex-shrink:0">${ini(p.nombre)}</div>
+          <div class="rank-info">
+            <div class="rank-name">${p.nombre}</div>
+            <div class="rank-meta">${estrellas} · ${trabajos}</div>
+          </div>
+        </div>`;
+      }).join('');
+    } else {
+      rk.innerHTML = '<div style="font-size:12px;color:var(--t3);padding:.5rem 0">Aún no hay proveedores. ¡Sé el primero en ofrecer un servicio!</div>';
     }
   }
 }
@@ -1345,9 +1403,14 @@ async function subRev() {
       if(provId){
         if(res) await sb.from('comisiones').insert({proveedor_id:provId,resena_id:res.id,monto:comm,status:'pendiente'});
         const {data:todas} = await sb.from('resenas').select('estrellas').eq('proveedor_id',provId);
+        // Traer total_trabajos actual e incrementarlo
+        const {data:provActual} = await sb.from('proveedores').select('total_trabajos').eq('id',provId).maybeSingle();
+        const nuevoTotal = ((provActual?.total_trabajos)||0)+1;
         if(todas && todas.length>0){
           const prom = todas.reduce((a,r)=>a+r.estrellas,0)/todas.length;
-          await sb.from('proveedores').update({rating:Math.round(prom*10)/10, total_reviews:todas.length}).eq('id',provId);
+          await sb.from('proveedores').update({rating:Math.round(prom*10)/10, total_reviews:todas.length, total_trabajos:nuevoTotal}).eq('id',provId);
+        } else {
+          await sb.from('proveedores').update({total_trabajos:nuevoTotal}).eq('id',provId);
         }
       } else {
         await sb.from('comisiones').insert({monto:comm,status:'pendiente'});
