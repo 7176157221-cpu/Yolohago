@@ -498,7 +498,7 @@ async function init() {
     }
     updateNav();
     suscribirMensajesGlobal();
-    pedirPermisoNotif();
+    pedirPermisoNotif_init();
     if(G.u.email === ADMIN_EMAIL) { go('admin'); }
     else {
       revisarNotificaciones();
@@ -836,7 +836,7 @@ async function doLogin() {
   G.u=data.user;G.session=data.session;
   updateNav();
   if(e===ADMIN_EMAIL) go('admin');
-  else { go(G._d||'home'); revisarNotificaciones(); suscribirMensajesGlobal(); pedirPermisoNotif(); }
+  else { go(G._d||'home'); revisarNotificaciones(); suscribirMensajesGlobal(); pedirPermisoNotif_init(); }
   G._d=null;
 }
 
@@ -1755,6 +1755,7 @@ function updateNav(){
       <button class="nb gh" onclick="go('misanuncios')">Mis anuncios</button>
       <button class="nb gh" onclick="go('chat')">💬 Mensajes <span id="notif-badge" style="display:none;background:var(--red);color:#fff;border-radius:999px;padding:1px 6px;font-size:10px;margin-left:2px"></span></button>
       <button class="nb s" onclick="go('admin')">🛡️ Panel</button>
+      <button id="btn-activar-notif" class="nb gh" style="display:none;color:var(--amb);border-color:var(--amb)" onclick="pedirPermisoNotif()">🔔 Activar avisos</button>
       <button class="nb gh" onclick="logout()">Salir</button>`;
   } else {
     const meta=G.u.user_metadata||{};
@@ -1764,9 +1765,11 @@ function updateNav(){
       <button class="nb gh" onclick="rlog('publicar')">+ Publicar anuncio</button>
       <button class="nb gh" onclick="rlog('misanuncios')">Mis anuncios</button>
       <button class="nb gh" onclick="rlog('chat')">💬 Mensajes <span id="notif-badge" style="display:none;background:var(--red);color:#fff;border-radius:999px;padding:1px 6px;font-size:10px;margin-left:2px"></span></button>
+      <button id="btn-activar-notif" class="nb gh" style="display:none;color:var(--amb);border-color:var(--amb)" onclick="pedirPermisoNotif()">🔔 Activar avisos</button>
       <button class="nb gh" style="color:var(--g)" onclick="go('profile')">👤 ${name}</button>`;
   }
   if(G.u) setTimeout(actualizarNotif,500);
+  if(G.u) setTimeout(actualizarBotonNotif,600);
 }
 
 // ---- PWA: registrar service worker y notificaciones ----
@@ -1775,13 +1778,26 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').then(reg=>{ G_swReg = reg; }).catch(()=>{});
 }
 
-// Pedir permiso de notificaciones (se llama tras iniciar sesión)
+// Pedir permiso de notificaciones (debe llamarse tras un clic del usuario)
 function pedirPermisoNotif(){
-  if(!('Notification' in window)) return;
-  if(Notification.permission === 'default'){
-    // Pedir permiso con un pequeño retraso para no ser intrusivo
-    setTimeout(()=>{ Notification.requestPermission(); }, 3000);
-  }
+  if(!('Notification' in window)){ alert('Tu navegador no soporta notificaciones.'); return; }
+  Notification.requestPermission().then(perm=>{
+    actualizarBotonNotif();
+    if(perm==='granted'){
+      mostrarNotificacion('¡Notificaciones activadas! 🔔','Te avisaremos cuando recibas un mensaje.');
+    } else if(perm==='denied'){
+      alert('Las notificaciones están bloqueadas. Para activarlas, ve a los ajustes del navegador (o del sitio) y permite las notificaciones para YoLoHago.');
+    }
+  });
+}
+
+// Muestra u oculta el botón de activar notificaciones según el estado
+function actualizarBotonNotif(){
+  const btn = document.getElementById('btn-activar-notif');
+  if(!btn) return;
+  if(!('Notification' in window)){ btn.style.display='none'; return; }
+  if(Notification.permission === 'granted'){ btn.style.display='none'; }
+  else { btn.style.display = G.u ? 'flex' : 'none'; }
 }
 
 // Mostrar una notificación local (cuando la app está abierta o en segundo plano)
@@ -1796,6 +1812,32 @@ function mostrarNotificacion(titulo, cuerpo){
       new Notification(titulo, {body:cuerpo, icon:'/icon-192.png'});
     }
   }catch(e){}
+}
+
+// Al iniciar sesión: si ya tiene permiso, todo bien; si no, mostrar el botón para activar
+function pedirPermisoNotif_init(){
+  actualizarBotonNotif();
+  mostrarAvisoiPhone();
+}
+function esiPhone(){
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+function estaInstalada(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function mostrarAvisoiPhone(){
+  if(!esiPhone() || estaInstalada()) return;
+  if(sessionStorage.getItem('ylh_aviso_iphone')) return;
+  if(document.getElementById('aviso-iphone')) return;
+  const aviso = document.createElement('div');
+  aviso.id = 'aviso-iphone';
+  aviso.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:2px solid var(--g);padding:16px;z-index:9999;font-size:13px;color:var(--t);box-shadow:0 -4px 20px rgba(0,0,0,.4)';
+  aviso.innerHTML = `<div style="max-width:500px;margin:0 auto">
+    <div style="font-weight:600;margin-bottom:6px;color:var(--g)">📲 Instala YoLoHago en tu iPhone</div>
+    <div style="color:var(--t2);line-height:1.5;margin-bottom:10px">Para recibir notificaciones de mensajes: toca el botón <b>Compartir</b> ⬆️ (abajo en Safari) y elige <b>"Agregar a inicio"</b>. Debe ser en <b>Safari</b>.</div>
+    <button onclick="document.getElementById('aviso-iphone').remove();sessionStorage.setItem('ylh_aviso_iphone','1')" style="background:var(--g);color:#000;border:none;border-radius:8px;padding:8px 16px;font-weight:600;cursor:pointer;width:100%">Entendido</button>
+  </div>`;
+  document.body.appendChild(aviso);
 }
 
 init();
