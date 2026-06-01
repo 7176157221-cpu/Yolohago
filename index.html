@@ -330,6 +330,17 @@ tr:hover td{background:rgba(255,255,255,.02)}
   <div style="text-align:center;font-size:12px;color:var(--t2)"><span style="color:var(--g);cursor:pointer" onclick="go('login')">← Volver a ingresar</span></div>
 </div></div></div>
 
+<!-- NUEVA CONTRASEÑA (tras recuperación por correo) -->
+<div id="pg-nuevapass" class="pg"><div class="fw"><div class="fcard">
+  <div id="npok" class="sok" style="display:none">✓ Contraseña actualizada. Ya puedes ingresar con tu nueva contraseña.</div>
+  <div id="nperr" class="err"></div>
+  <div class="ftit">Crear nueva contraseña</div>
+  <div class="fsub">Ingresa tu nueva contraseña para tu cuenta.</div>
+  <div class="fg"><label class="fl">Nueva contraseña</label><input class="fi" id="np1" type="password" placeholder="••••••••" /></div>
+  <div class="fg"><label class="fl">Confirmar nueva contraseña</label><input class="fi" id="np2" type="password" placeholder="••••••••" /></div>
+  <button class="btn bg_" style="width:100%;padding:11px" onclick="guardarNuevaPass()">Guardar nueva contraseña</button>
+</div></div></div>
+
 <!-- REGISTER -->
 <div id="pg-register" class="pg"><div class="fw"><div class="fcard">
   <div id="rok" class="sok" style="display:none">✓ Cuenta creada. Revisa tu email para confirmar tu cuenta.</div>
@@ -459,6 +470,14 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let G = {u:null, session:null, star:0, activeConvo:null, aTab:'p', reviewConvoId:null};
 
 async function init() {
+  // Si viene del correo de recuperación de contraseña, mostrar pantalla de nueva contraseña
+  const urlParams = new URLSearchParams(window.location.search);
+  const hashParams = window.location.hash || '';
+  if(urlParams.get('reset')==='true' || hashParams.includes('type=recovery')){
+    updateNav();
+    go('nuevapass');
+    return; // no redirigir al inicio
+  }
   const {data:{session}} = await sb.auth.getSession();
   if(session) {
     G.session = session;
@@ -488,11 +507,41 @@ async function init() {
     loadHome();
   }
   sb.auth.onAuthStateChange((_e, session) => {
+    if(_e === 'PASSWORD_RECOVERY'){
+      // El usuario llegó desde el correo de recuperación: mostrar pantalla de nueva contraseña
+      G.session = session;
+      G.u = session?.user || null;
+      go('nuevapass');
+      return;
+    }
     G.session = session;
     G.u = session?.user || null;
     updateNav();
     if(G.u) suscribirMensajesGlobal();
   });
+}
+
+async function guardarNuevaPass() {
+  const p1=document.getElementById('np1').value;
+  const p2=document.getElementById('np2').value;
+  const err=document.getElementById('nperr');
+  err.style.display='none';
+  if(!p1||!p2){err.textContent='Completa ambos campos.';err.style.display='block';return;}
+  if(p1!==p2){err.textContent='Las contraseñas no coinciden.';err.style.display='block';return;}
+  if(p1.length<6){err.textContent='La contraseña debe tener al menos 6 caracteres.';err.style.display='block';return;}
+  const {error} = await sb.auth.updateUser({password:p1});
+  if(error){err.textContent='Error al actualizar la contraseña. Intenta de nuevo o solicita un nuevo enlace.';err.style.display='block';return;}
+  document.getElementById('np1').value='';
+  document.getElementById('np2').value='';
+  document.getElementById('npok').style.display='flex';
+  // Cerrar sesión de recuperación y mandar al login tras 2.5s
+  setTimeout(async ()=>{
+    document.getElementById('npok').style.display='none';
+    await sb.auth.signOut();
+    G.u=null; G.session=null;
+    updateNav();
+    go('login');
+  },2500);
 }
 
 function suscribirMensajesGlobal() {
