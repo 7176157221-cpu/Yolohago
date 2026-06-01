@@ -123,8 +123,8 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background:linear-gradi
 .mi{background:var(--bg3);color:var(--t);align-self:flex-start;border-radius:4px 16px 16px 16px}
 .mo{background:var(--g);color:#000;align-self:flex-end;border-radius:16px 4px 16px 16px}
 .mt{font-size:10px;margin-top:3px;opacity:.55}
-.mcheck{font-size:11px;opacity:.7;margin-left:2px}
-.mcheck.leido{color:#4fc3f7;opacity:1}
+.mcheck{font-size:10px;opacity:.65;margin-left:3px;font-weight:600}
+.mcheck.leido{color:#0a3d28;opacity:1}
 .msys{background:var(--bg3);border:1px solid var(--bd2);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--t2);text-align:center;align-self:center;max-width:90%}
 .dbox{background:var(--bg3);border:1px solid var(--bd2);border-radius:14px;padding:1.125rem;align-self:center;max-width:86%;width:100%}
 .dlbl{font-size:12px;color:var(--t2);margin-bottom:4px}
@@ -1033,7 +1033,7 @@ function iniciarPresencia(){
 function estadoEnLinea(ultimaActividad){
   if(!ultimaActividad) return {txt:'Desconectado', online:false};
   const diff = (Date.now() - new Date(ultimaActividad).getTime())/1000;
-  if(diff < 40) return {txt:'En línea', online:true};
+  if(diff < 35) return {txt:'En línea', online:true};
   return {txt:'Desconectado', online:false};
 }
 
@@ -1191,11 +1191,11 @@ async function openConvo(id) {
   // Suscripción realtime
   if(G.msgChannel){ sb.removeChannel(G.msgChannel); }
   G.msgChannel = sb.channel('msgs-'+id+'-'+Date.now())
-    .on('postgres_changes', {event:'INSERT', schema:'public', table:'mensajes', filter:'conversacion_id=eq.'+id}, () => {
-      if(G.activeConvo===id) renderMensajes(id);
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'mensajes', filter:'conversacion_id=eq.'+id}, (payload) => {
+      if(G.activeConvo===id) actualizarSoloMensajes(id, payload.new);
     })
     .on('postgres_changes', {event:'UPDATE', schema:'public', table:'mensajes', filter:'conversacion_id=eq.'+id}, () => {
-      if(G.activeConvo===id) renderMensajes(id);
+      if(G.activeConvo===id) actualizarSoloMensajes(id);
     })
     .subscribe();
   // Suscripción al estado en línea del otro (tiempo real)
@@ -1344,6 +1344,44 @@ function pintarMensajes(id, conv, otro, msgsData, ocData) {
   if(box) box.scrollTop = box.scrollHeight;
 }
 
+// Pinta un solo mensaje (reutilizable)
+function pintarUnMensaje(m, id){
+  if(m.tipo==='deal') {
+    const esMio = m.autor_id===G.u.id;
+    const aceptado = m.contenido.includes('|aceptado');
+    const monto = m.contenido.split('|')[0];
+    return `<div class="dbox"><div class="dlbl">Propuesta de precio</div><div class="damt">S/ ${monto}</div>${
+      aceptado ? `<span class="pill pg_">✓ Acuerdo confirmado</span>`
+      : esMio ? `<span class="pill pa_">Esperando respuesta...</span>`
+      : `<div style="display:flex;gap:8px"><button class="btn bg_ bsm" onclick="aceptarDeal('${id}','${m.id}','${monto}')">Aceptar trato</button></div>`
+    }</div>`;
+  }
+  if(m.tipo==='sistema') return `<div class="msys">${m.contenido}</div>`;
+  const esMioMsg = m.autor_id===G.u.id;
+  const checks = esMioMsg ? `<span class="mcheck ${m.leido?'leido':''}">${m.leido?'✓✓ leído':'✓ enviado'}</span>` : '';
+  if(m.tipo==='imagen') return `<div class="msg ${esMioMsg?'mo':'mi'}" style="padding:4px"><img src="${m.contenido}" style="max-width:200px;max-height:240px;border-radius:10px;display:block;cursor:pointer" onclick="window.open('${m.contenido}','_blank')"/><div class="mt">${timeAgo(m.created_at)} ${checks}</div></div>`;
+  return `<div class="msg ${esMioMsg?'mo':'mi'}">${m.contenido}<div class="mt">${timeAgo(m.created_at)} ${checks}</div></div>`;
+}
+
+// Actualiza SOLO la lista de mensajes (sin redibujar encabezado ni sacar del chat)
+async function actualizarSoloMensajes(id){
+  const box = document.getElementById('msgs-box');
+  if(!box || G.activeConvo!==id) return;
+  // Marcar como leídos los del otro (ya estoy viendo el chat)
+  sb.from('mensajes').update({leido:true}).eq('conversacion_id',id).neq('autor_id',G.u.id).eq('leido',false).then(()=>actualizarNotif());
+  const [resMsgs, resOcultos] = await Promise.all([
+    sb.from('mensajes').select('*').eq('conversacion_id',id).order('created_at',{ascending:true}),
+    sb.from('chats_ocultos').select('oculto_desde').eq('usuario_id',G.u.id).eq('conversacion_id',id).maybeSingle()
+  ]);
+  let msgs = resMsgs.data || [];
+  if(resOcultos.data && resOcultos.data.oculto_desde){
+    msgs = msgs.filter(m=> new Date(m.created_at) > new Date(resOcultos.data.oculto_desde));
+  }
+  const estabaAlFondo = box.scrollHeight - box.scrollTop - box.clientHeight < 100;
+  box.innerHTML = msgs.map(m=>pintarUnMensaje(m, id)).join('');
+  if(estabaAlFondo) box.scrollTop = box.scrollHeight;
+}
+
 async function borrarChat(convoId) {
   const esAdmin = G.u.email===ADMIN_EMAIL;
   if(esAdmin) {
@@ -1423,7 +1461,7 @@ async function sendMsg(convoId) {
   }
   inp.value='';
   await sb.from('mensajes').insert({conversacion_id:convoId,autor_id:G.u.id,tipo:'texto',contenido:txt,leido:false});
-  renderMensajes(convoId);
+  actualizarSoloMensajes(convoId);
 }
 
 async function enviarFotoChat(convoId, inputEl) {
