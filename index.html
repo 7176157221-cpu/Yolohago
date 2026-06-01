@@ -1017,7 +1017,7 @@ function iniciarPresencia(){
   marcarActividad();
   if(G._presenciaInt) clearInterval(G._presenciaInt);
   // Refrescar "en línea" cada 25s mientras la app esté visible
-  G._presenciaInt = setInterval(()=>{ if(document.visibilityState==='visible' && G.u) marcarActividad(); }, 25000);
+  G._presenciaInt = setInterval(()=>{ if(document.visibilityState==='visible' && G.u) marcarActividad(); }, 15000);
   // Detectar cuando se oculta o vuelve la app
   if(!G._presenciaListener){
     G._presenciaListener = true;
@@ -1198,20 +1198,34 @@ async function openConvo(id) {
       if(G.activeConvo===id) renderMensajes(id);
     })
     .subscribe();
-  // Refrescar el estado "en línea" del otro cada 20s mientras el chat esté abierto
+  // Suscripción al estado en línea del otro (tiempo real)
+  const otroIdEstado = conv.interesado_id===G.u.id ? conv.cliente_id : conv.interesado_id;
+  if(G.estadoChannel){ sb.removeChannel(G.estadoChannel); }
+  if(otroIdEstado){
+    G.estadoChannel = sb.channel('estado-'+otroIdEstado+'-'+Date.now())
+      .on('postgres_changes', {event:'UPDATE', schema:'public', table:'usuarios', filter:'id=eq.'+otroIdEstado}, (payload) => {
+        if(G.activeConvo!==id) return;
+        const ua = payload.new?.ultima_actividad;
+        if(G.convData?.otro) G.convData.otro.ultima_actividad = ua;
+        const est = estadoEnLinea(ua);
+        const elEstado = document.getElementById('estado-otro');
+        if(elEstado) elEstado.innerHTML = est.online?'<span style="color:var(--g)">● En línea</span>':'<span style="opacity:.7">○ Desconectado</span>';
+      })
+      .subscribe();
+  }
+  // Respaldo: refrescar estado cada 15s
   if(G._estadoInt) clearInterval(G._estadoInt);
   G._estadoInt = setInterval(async ()=>{
     if(G.activeConvo!==id){ clearInterval(G._estadoInt); return; }
-    const otroId = G.convData?.otro && (G.convData.conv.interesado_id===G.u.id ? G.convData.conv.cliente_id : G.convData.conv.interesado_id);
-    if(!otroId) return;
-    const {data:u} = await sb.from('usuarios').select('ultima_actividad').eq('id',otroId).maybeSingle();
-    if(u && G.convData?.otro){
-      G.convData.otro.ultima_actividad = u.ultima_actividad;
+    if(!otroIdEstado) return;
+    const {data:u} = await sb.from('usuarios').select('ultima_actividad').eq('id',otroIdEstado).maybeSingle();
+    if(u){
+      if(G.convData?.otro) G.convData.otro.ultima_actividad = u.ultima_actividad;
       const est = estadoEnLinea(u.ultima_actividad);
       const elEstado = document.getElementById('estado-otro');
       if(elEstado) elEstado.innerHTML = est.online?'<span style="color:var(--g)">● En línea</span>':'<span style="opacity:.7">○ Desconectado</span>';
     }
-  }, 20000);
+  }, 15000);
   setTimeout(()=>{ actualizarNotif(); }, 800);
 }
 
@@ -1311,9 +1325,10 @@ function pintarMensajes(id, conv, otro, msgsData, ocData) {
           }</div>`;
         }
         if(m.tipo==='sistema') return `<div class="msys">${m.contenido}</div>`;
-        const checks = m.autor_id===G.u.id ? `<span class="mcheck ${m.leido?'leido':''}">${m.leido?'✓✓':'✓'}</span>` : '';
-        if(m.tipo==='imagen') return `<div class="msg ${m.autor_id===G.u.id?'mo':'mi'}" style="padding:4px"><img src="${m.contenido}" style="max-width:200px;max-height:240px;border-radius:10px;display:block;cursor:pointer" onclick="window.open('${m.contenido}','_blank')"/><div class="mt">${timeAgo(m.created_at)} ${checks}</div></div>`;
-        return `<div class="msg ${m.autor_id===G.u.id?'mo':'mi'}">${m.contenido}<div class="mt">${timeAgo(m.created_at)} ${checks}</div></div>`;
+        const esMioMsg = m.autor_id===G.u.id;
+        const checks = esMioMsg ? `<span class="mcheck ${m.leido?'leido':''}">${m.leido?'✓✓ leído':'✓ enviado'}</span>` : '';
+        if(m.tipo==='imagen') return `<div class="msg ${esMioMsg?'mo':'mi'}" style="padding:4px"><img src="${m.contenido}" style="max-width:200px;max-height:240px;border-radius:10px;display:block;cursor:pointer" onclick="window.open('${m.contenido}','_blank')"/><div class="mt">${timeAgo(m.created_at)} ${checks}</div></div>`;
+        return `<div class="msg ${esMioMsg?'mo':'mi'}">${m.contenido}<div class="mt">${timeAgo(m.created_at)} ${checks}</div></div>`;
       }).join('')}
     </div>
     ${conv?.status==='cerrada_moderacion'
