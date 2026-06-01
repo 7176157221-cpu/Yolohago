@@ -500,6 +500,7 @@ async function init() {
     updateNav();
     suscribirMensajesGlobal();
     pedirPermisoNotif_init();
+    iniciarPresencia();
     if(G.u.email === ADMIN_EMAIL) { go('admin'); }
     else {
       revisarNotificaciones();
@@ -839,7 +840,7 @@ async function doLogin() {
   G.u=data.user;G.session=data.session;
   updateNav();
   if(e===ADMIN_EMAIL) go('admin');
-  else { go(G._d||'home'); revisarNotificaciones(); suscribirMensajesGlobal(); pedirPermisoNotif_init(); }
+  else { go(G._d||'home'); revisarNotificaciones(); suscribirMensajesGlobal(); pedirPermisoNotif_init(); iniciarPresencia(); }
   G._d=null;
 }
 
@@ -974,45 +975,101 @@ async function contactarPedido(pedidoId, duenoId, titulo) {
   if(duenoId===G.u.id){alert('Este es tu propio anuncio.');return;}
   // Un chat por anuncio: busca conversación de ESTE pedido con ESTE interesado
   const {data:exist} = await sb.from('conversaciones').select('id').eq('pedido_id',pedidoId).eq('interesado_id',G.u.id).maybeSingle();
-  let convoId;
-  if(exist){convoId=exist.id;}
-  else {
-    const {data:nueva} = await sb.from('conversaciones').insert({pedido_id:pedidoId,cliente_id:duenoId,interesado_id:G.u.id,titulo_ref:titulo,status:'activa'}).select().single();
-    convoId=nueva.id;
-  }
+  if(exist){ go('chat'); setTimeout(()=>openConvo(exist.id),300); return; }
+  // No crear todavía: guardar pendiente hasta el primer mensaje
+  G.convoPendiente = {pedido_id:pedidoId, cliente_id:duenoId, interesado_id:G.u.id, titulo_ref:titulo};
   go('chat');
-  setTimeout(()=>openConvo(convoId),300);
+  setTimeout(()=>abrirConvoPendiente(duenoId, titulo),200);
 }
 
 async function contactarDirecto(otroUserId, nombreOtro) {
   if(!G.u){G._d='chat';go('login');return;}
   if(otroUserId===G.u.id){alert('Este es tu propio perfil.');return;}
-  // Buscar conversación directa previa (sin pedido ni proveedor) entre estos dos
   const {data:e1} = await sb.from('conversaciones').select('id').eq('cliente_id',otroUserId).eq('interesado_id',G.u.id).is('pedido_id',null).is('proveedor_id',null).maybeSingle();
-  let convoId;
-  if(e1){ convoId=e1.id; }
-  else {
-    // El que contacta es el interesado (cliente que paga); el otro es quien prestará el servicio
-    const {data:nueva} = await sb.from('conversaciones').insert({cliente_id:otroUserId,interesado_id:G.u.id,titulo_ref:'Contacto directo con '+nombreOtro,status:'activa'}).select().single();
-    convoId=nueva.id;
-  }
+  if(e1){ go('chat'); setTimeout(()=>openConvo(e1.id),300); return; }
+  G.convoPendiente = {cliente_id:otroUserId, interesado_id:G.u.id, titulo_ref:'Contacto directo con '+nombreOtro};
   go('chat');
-  setTimeout(()=>openConvo(convoId),300);
+  setTimeout(()=>abrirConvoPendiente(otroUserId, 'Contacto directo con '+nombreOtro),200);
 }
 
 async function contactarProveedor(provId, provUserId, nombre) {
   if(!G.u){G._d='chat';go('login');return;}
   if(provUserId && provUserId===G.u.id){alert('Este es tu propio servicio. No puedes solicitarte a ti mismo.');return;}
-  // Un chat por servicio: busca conversación de ESTE proveedor con ESTE interesado
   const {data:exist} = await sb.from('conversaciones').select('id').eq('proveedor_id',provId).eq('interesado_id',G.u.id).is('pedido_id',null).maybeSingle();
-  let convoId;
-  if(exist){convoId=exist.id;}
-  else {
-    const {data:nueva} = await sb.from('conversaciones').insert({proveedor_id:provId,cliente_id:provUserId||null,interesado_id:G.u.id,titulo_ref:'Servicio: '+nombre,status:'activa'}).select().single();
-    convoId=nueva.id;
-  }
+  if(exist){ go('chat'); setTimeout(()=>openConvo(exist.id),300); return; }
+  G.convoPendiente = {proveedor_id:provId, cliente_id:provUserId||null, interesado_id:G.u.id, titulo_ref:'Servicio: '+nombre};
   go('chat');
-  setTimeout(()=>openConvo(convoId),300);
+  setTimeout(()=>abrirConvoPendiente(provUserId, 'Servicio: '+nombre),200);
+}
+
+// Abre una vista de chat para una conversación que AÚN no existe (se crea al primer mensaje)
+// ---- Estado en línea ----
+async function marcarActividad(){
+  if(!G.u) return;
+  try{ await sb.from('usuarios').update({ultima_actividad:new Date().toISOString()}).eq('id',G.u.id); }catch(e){}
+}
+function iniciarPresencia(){
+  marcarActividad();
+  if(G._presenciaInt) clearInterval(G._presenciaInt);
+  // Actualizar cada 30 segundos mientras la app esté abierta
+  G._presenciaInt = setInterval(()=>{ if(document.visibilityState==='visible') marcarActividad(); }, 30000);
+}
+// Devuelve texto de estado según última actividad
+function estadoEnLinea(ultimaActividad){
+  if(!ultimaActividad) return {txt:'Desconectado', online:false};
+  const diff = (Date.now() - new Date(ultimaActividad).getTime())/1000; // segundos
+  if(diff < 70) return {txt:'En línea', online:true};
+  // Texto de "última vez"
+  return {txt:'Desconectado', online:false};
+}
+
+async function abrirConvoPendiente(otroUserId, titulo){
+  G.activeConvo = '__pendiente__';
+  const cshell=document.getElementById('cshell');
+  if(cshell){cshell.classList.remove('ver-lista');cshell.classList.add('ver-chat');}
+  let otro = null;
+  if(otroUserId){
+    const {data:u} = await sb.from('usuarios').select('nombre,apellidos,email,whatsapp,ubicacion').eq('id',otroUserId).maybeSingle();
+    otro = u;
+  }
+  const nombreOtro = otro ? (otro.nombre||'Usuario') : 'Usuario';
+  const cm = document.getElementById('cm');
+  cm.innerHTML = `
+    <div class="ctop">
+      <button class="btn bsm btn-volver-lista" onclick="salirChat()">←</button>
+      <div class="av">${ini(nombreOtro)}</div>
+      <div><div style="font-size:14px;font-weight:500;color:var(--t)">${nombreOtro}</div><div style="font-size:12px;color:var(--t3)">${titulo}</div></div>
+    </div>
+    <div style="background:var(--abg);border:1px solid var(--amb);border-radius:8px;padding:7px 10px;margin:0 1rem 8px;font-size:11px;color:var(--amb)">🔒 Por seguridad, no compartas números ni contactos aquí. Se comparten solos al cerrar el trato.</div>
+    <div class="msgs" id="msgs-box">
+      <div style="text-align:center;color:var(--t3);font-size:13px;padding:2rem 1rem">Escribe tu primer mensaje para iniciar la conversación con ${nombreOtro}.</div>
+    </div>
+    <div class="cinpr">
+      <input class="cinp" id="cinp" placeholder="Escribe un mensaje..." onkeydown="if(event.key==='Enter')enviarPrimerMensaje()" />
+      <button class="btn bg_ bsm" onclick="enviarPrimerMensaje()">➤</button>
+    </div>`;
+}
+
+// Crea la conversación de verdad y envía el primer mensaje
+async function enviarPrimerMensaje(){
+  const inp = document.getElementById('cinp');
+  const txt = inp.value.trim();
+  if(!txt) return;
+  if(detectarContacto(txt)){
+    alert('⚠️ Por tu seguridad, no se permite compartir números de teléfono ni contactos externos. Todo acuerdo debe cerrarse dentro de la app.');
+    return;
+  }
+  if(!G.convoPendiente) return;
+  inp.disabled = true;
+  // Crear la conversación ahora
+  const {data:nueva} = await sb.from('conversaciones').insert({...G.convoPendiente, status:'activa'}).select().single();
+  if(!nueva){ inp.disabled=false; alert('No se pudo iniciar la conversación. Intenta de nuevo.'); return; }
+  // Enviar el primer mensaje
+  await sb.from('mensajes').insert({conversacion_id:nueva.id,autor_id:G.u.id,tipo:'texto',contenido:txt,leido:false});
+  G.convoPendiente = null;
+  // Recargar la lista y abrir la conversación ya real
+  await loadChat();
+  openConvo(nueva.id);
 }
 
 function salirChat() {
@@ -1109,7 +1166,7 @@ async function openConvo(id) {
   const otroId = conv.interesado_id===G.u.id ? conv.cliente_id : conv.interesado_id;
   // Traer datos del otro Y mensajes Y ocultos EN PARALELO (mucho más rápido)
   const [resOtro, resMsgs, resOcultos] = await Promise.all([
-    otroId ? sb.from('usuarios').select('nombre,apellidos,email,whatsapp,ubicacion').eq('id',otroId).single() : Promise.resolve({data:null}),
+    otroId ? sb.from('usuarios').select('nombre,apellidos,email,whatsapp,ubicacion,ultima_actividad').eq('id',otroId).single() : Promise.resolve({data:null}),
     sb.from('mensajes').select('*').eq('conversacion_id',id).order('created_at',{ascending:true}),
     sb.from('chats_ocultos').select('oculto_desde').eq('usuario_id',G.u.id).eq('conversacion_id',id).maybeSingle()
   ]);
@@ -1200,7 +1257,7 @@ function pintarMensajes(id, conv, otro, msgsData, ocData) {
   cm.innerHTML = `
     <div class="ctop">
       <div class="av">${ini(nombreOtro)}</div>
-      <div><div style="font-size:14px;font-weight:500;color:var(--t)">${nombreOtro}</div><div style="font-size:12px;color:var(--t3)">${conv?.titulo_ref||''}</div></div>
+      <div><div style="font-size:14px;font-weight:500;color:var(--t)">${nombreOtro}</div><div style="font-size:12px;color:var(--t3)">${(()=>{const e=estadoEnLinea(otro?.ultima_actividad);return e.online?'<span style="color:var(--g)">● En línea</span>':'<span style="opacity:.7">○ Desconectado</span>';})()} · ${conv?.titulo_ref||''}</div></div>
       <div style="margin-left:auto;display:flex;gap:6px">
         ${hayAcuerdo&&conv?.status!=='completada'&&(yoPago||esAdmin)?`<button class="btn bog bsm" onclick="G.reviewConvoId='${id}';go('review')">✓ Confirmar completado</button>`:''}
         ${hayAcuerdo&&conv?.status!=='completada'&&!yoPago&&!esAdmin?`<span style="font-size:11px;color:var(--t3);align-self:center">Esperando que el cliente confirme</span>`:''}
