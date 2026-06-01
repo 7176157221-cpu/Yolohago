@@ -304,8 +304,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
   <div class="frow"><div class="fg"><label class="fl">Nombres</label><input class="fi" id="rn" placeholder="María" /></div><div class="fg"><label class="fl">Apellidos</label><input class="fi" id="rl" placeholder="García" /></div></div>
   <div class="fg"><label class="fl">Email</label><input class="fi" id="re" type="email" placeholder="tu@email.com" /></div>
   <div class="fg"><label class="fl">WhatsApp (obligatorio)</label><input class="fi" id="rph" placeholder="951234567" /></div>
+  <div class="fg"><label class="fl">Dirección (obligatorio)</label><input class="fi" id="rub" placeholder="Jr. Amazonas 540, cerca al mercado" /><div style="font-size:11px;color:var(--t3);margin-top:4px">Se compartirá solo cuando cierres un acuerdo, para que te ubiquen</div></div>
   <div class="frow"><div class="fg"><label class="fl">Contraseña</label><input class="fi" id="rp1" type="password" placeholder="••••••••" /></div><div class="fg"><label class="fl">Confirmar</label><input class="fi" id="rp2" type="password" placeholder="••••••••" /></div></div>
-  <div class="trm" style="margin-top:.5rem"><b>Términos y condiciones de YoLoHago:</b><br>• YoLoHago es una plataforma que conecta a personas que necesitan servicios con quienes los ofrecen en Chachapoyas.<br>• Si ofreces un servicio y cierras un trato por la app, aceptas pagar una <b>comisión del 5%</b> del monto acordado al administrador, vía Yape, dentro de 24 horas de completado el trabajo.<br>• Los datos de contacto (correo y teléfono) solo se comparten entre las partes <b>una vez cerrado un acuerdo</b>.<br>• El administrador puede acceder a los datos de contacto para soporte, verificación y cobro de comisiones.<br>• El incumplimiento del pago de comisiones puede resultar en la suspensión de tu cuenta.</div>
+  <div class="trm" style="margin-top:.5rem"><b>Términos y condiciones de YoLoHago:</b><br>• YoLoHago es una plataforma que conecta a personas que necesitan servicios con quienes los ofrecen en Chachapoyas.<br>• Si ofreces un servicio y cierras un trato por la app, aceptas pagar una <b>comisión del 5%</b> del monto acordado al administrador, vía Yape, dentro de 24 horas de completado el trabajo.<br>• Los datos de contacto (teléfono y dirección) solo se comparten entre las partes <b>una vez cerrado un acuerdo</b>.<br>• El administrador puede acceder a los datos de contacto para soporte, verificación y cobro de comisiones.<br>• El incumplimiento del pago de comisiones puede resultar en la suspensión de tu cuenta.</div>
   <div class="fchk" style="margin-top:.75rem"><input type="checkbox" id="rchk" style="flex-shrink:0;margin-top:1px;accent-color:var(--g)" /><label for="rchk">He leído y acepto los términos y condiciones</label></div>
   <button class="btn bg_" style="width:100%;padding:11px;margin-top:.5rem" onclick="doReg()">Crear cuenta gratis</button>
 </div></div></div>
@@ -358,6 +359,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="av alg" id="prof-av" style="width:52px;height:52px;font-size:16px"></div>
       <div><div style="font-size:15px;font-weight:500;color:var(--t)" id="prof-name"></div><div style="font-size:13px;color:var(--t2)" id="prof-email"></div></div>
     </div>
+  </div>
+  <div class="prof-sec">
+    <div style="font-size:13px;font-weight:500;color:var(--t);margin-bottom:1rem">📍 Mi contacto y ubicación</div>
+    <div id="datosok" class="sok" style="display:none">✓ Datos actualizados correctamente.</div>
+    <div class="fg"><label class="fl">WhatsApp</label><input class="fi" id="prof-wsp" placeholder="951234567" /></div>
+    <div class="fg"><label class="fl">Dirección</label><input class="fi" id="prof-ubic" placeholder="Jr. Amazonas 540, cerca al mercado" /><div style="font-size:11px;color:var(--t3);margin-top:4px">Se comparte solo cuando cierras un acuerdo</div></div>
+    <button class="btn bg_" onclick="guardarDatos()">Guardar cambios</button>
   </div>
   <div class="prof-sec">
     <div style="font-size:13px;font-weight:500;color:var(--t);margin-bottom:1rem">🔒 Cambiar contraseña</div>
@@ -688,19 +696,21 @@ async function doReg() {
   const l=document.getElementById('rl').value.trim();
   const e=document.getElementById('re').value.trim();
   const ph=document.getElementById('rph').value.trim();
+  const ub=document.getElementById('rub').value.trim();
   const p1=document.getElementById('rp1').value;
   const p2=document.getElementById('rp2').value;
   const err=document.getElementById('rerr');
   err.style.display='none';
   if(!n||!e||!p1){err.textContent='Completa todos los campos.';err.style.display='block';return;}
   if(!ph){err.textContent='El WhatsApp es obligatorio para que te puedan contactar.';err.style.display='block';return;}
+  if(!ub){err.textContent='La dirección es obligatoria (se comparte solo al cerrar un acuerdo).';err.style.display='block';return;}
   if(p1!==p2){err.textContent='Las contraseñas no coinciden.';err.style.display='block';return;}
   if(p1.length<6){err.textContent='La contraseña debe tener al menos 6 caracteres.';err.style.display='block';return;}
   if(!document.getElementById('rchk').checked){err.textContent='Debes aceptar los términos y condiciones para crear tu cuenta.';err.style.display='block';return;}
   const {data,error} = await sb.auth.signUp({email:e,password:p1,options:{data:{nombre:n,apellidos:l,whatsapp:ph}}});
   if(error){err.textContent=error.message;err.style.display='block';return;}
   if(data.user) {
-    await sb.from('usuarios').insert({id:data.user.id,nombre:n,apellidos:l,email:e,whatsapp:ph,password_hash:'supabase_auth'});
+    await sb.from('usuarios').insert({id:data.user.id,nombre:n,apellidos:l,email:e,whatsapp:ph,ubicacion:ub,password_hash:'supabase_auth'});
   }
   document.getElementById('rok').style.display='flex';
   setTimeout(()=>{document.getElementById('rok').style.display='none';go('login');},3000);
@@ -740,13 +750,30 @@ async function logout() {
   go('home');
 }
 
-function loadProfile() {
+async function loadProfile() {
   if(!G.u) return;
   const meta = G.u.user_metadata||{};
   const name = (meta.nombre||'')+' '+(meta.apellidos||'');
   document.getElementById('prof-name').textContent = name.trim()||G.u.email;
   document.getElementById('prof-email').textContent = G.u.email;
   document.getElementById('prof-av').textContent = ini(name.trim()||G.u.email);
+  // Cargar whatsapp y ubicación actuales
+  const {data:u} = await sb.from('usuarios').select('whatsapp,ubicacion').eq('id',G.u.id).maybeSingle();
+  if(u){
+    document.getElementById('prof-wsp').value = u.whatsapp||'';
+    document.getElementById('prof-ubic').value = u.ubicacion||'';
+  }
+}
+
+async function guardarDatos() {
+  const wsp = document.getElementById('prof-wsp').value.trim();
+  const ubic = document.getElementById('prof-ubic').value.trim();
+  if(!wsp){alert('El WhatsApp no puede quedar vacío.');return;}
+  if(!ubic){alert('La dirección no puede quedar vacía.');return;}
+  await sb.from('usuarios').update({whatsapp:wsp,ubicacion:ubic}).eq('id',G.u.id);
+  const ok=document.getElementById('datosok');
+  ok.style.display='block';
+  setTimeout(()=>{ok.style.display='none';},2500);
 }
 
 async function contactarPedido(pedidoId, duenoId, titulo) {
@@ -869,7 +896,7 @@ async function openConvo(id) {
   const otroId = conv.interesado_id===G.u.id ? conv.cliente_id : conv.interesado_id;
   let otro = null;
   if(otroId){
-    const {data:u} = await sb.from('usuarios').select('nombre,apellidos,email,whatsapp').eq('id',otroId).single();
+    const {data:u} = await sb.from('usuarios').select('nombre,apellidos,email,whatsapp,ubicacion').eq('id',otroId).single();
     otro = u;
   }
   G.convData = {conv, otro, id};
@@ -944,7 +971,7 @@ async function renderMensajes(id) {
   const verContacto = (hayAcuerdo || esAdmin) && otro;
   const contactoHTML = verContacto ? `<div style="background:var(--gbg);border:1px solid var(--g3);border-radius:10px;padding:10px 12px;margin:0 1rem 8px;font-size:12px;color:var(--g)">
     <div style="font-weight:500;margin-bottom:4px">${esAdmin&&!hayAcuerdo?'📋 Datos de contacto (admin)':'✓ Acuerdo cerrado — datos de contacto'}</div>
-    📧 ${otro.email||'sin email'} &nbsp;·&nbsp; 📱 ${otro.whatsapp||'sin teléfono'}
+    👤 ${nombreOtro} &nbsp;·&nbsp; 📱 ${otro.whatsapp||'sin teléfono'}<br>📍 ${otro.ubicacion||'sin dirección registrada'}${esAdmin?`<br><span style="color:var(--t3)">📧 ${otro.email||'sin email'} (solo admin)</span>`:''}
   </div>` : '';
   cm.innerHTML = `
     <div class="ctop">
