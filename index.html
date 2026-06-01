@@ -123,6 +123,8 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background:linear-gradi
 .mi{background:var(--bg3);color:var(--t);align-self:flex-start;border-radius:4px 16px 16px 16px}
 .mo{background:var(--g);color:#000;align-self:flex-end;border-radius:16px 4px 16px 16px}
 .mt{font-size:10px;margin-top:3px;opacity:.55}
+.mcheck{font-size:11px;opacity:.7;margin-left:2px}
+.mcheck.leido{color:#4fc3f7;opacity:1}
 .msys{background:var(--bg3);border:1px solid var(--bd2);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--t2);text-align:center;align-self:center;max-width:90%}
 .dbox{background:var(--bg3);border:1px solid var(--bd2);border-radius:14px;padding:1.125rem;align-self:center;max-width:86%;width:100%}
 .dlbl{font-size:12px;color:var(--t2);margin-bottom:4px}
@@ -459,7 +461,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <button class="tab" onclick="atab('d',this)">Acuerdos</button>
     <button class="tab" onclick="atab('c',this)">Comisiones</button>
     <button class="tab" onclick="atab('u',this)">Usuarios</button>
-    <button class="tab" onclick="atab('a',this)">+ Agregar proveedor</button>
   </div>
   <div id="ac"></div>
 </div></div>
@@ -715,8 +716,10 @@ async function loadHome() {
   if(rk || rkMovil){
     const {data:provsRank} = await sb.from('proveedores').select('id,nombre,usuario_id,total_trabajos,rating,total_reviews,status').eq('status','activo');
     let htmlRank;
-    if(provsRank && provsRank.length>0){
-      const conPuntaje = provsRank.map(p=>({
+    // Solo entran al ranking proveedores con al menos 1 trabajo completado
+    const conTrabajos = (provsRank||[]).filter(p=>(p.total_trabajos||0)>0);
+    if(conTrabajos.length>0){
+      const conPuntaje = conTrabajos.map(p=>({
         ...p,
         puntaje: (p.total_trabajos||0)*10 + (p.rating||0)*(p.total_reviews||0)
       }));
@@ -725,8 +728,8 @@ async function loadHome() {
       const medallas = ['🥇','🥈','🥉'];
       htmlRank = top.map((p,i)=>{
         const pos = medallas[i] || `${i+1}`;
-        const estrellas = p.rating>0 ? `★ ${p.rating.toFixed(1)}` : 'Sin reseñas';
-        const trabajos = (p.total_trabajos||0)>0 ? `${p.total_trabajos} ${p.total_trabajos===1?'trabajo':'trabajos'}` : 'Nuevo';
+        const estrellas = p.rating>0 ? `★ ${p.rating.toFixed(1)}` : 'Nuevo';
+        const trabajos = `${p.total_trabajos} ${p.total_trabajos===1?'servicio':'servicios'}`;
         const click = p.usuario_id ? `onclick="verPerfilPublico('${p.usuario_id}')"` : '';
         return `<div class="rank-item" ${click}>
           <div class="rank-pos">${pos}</div>
@@ -738,7 +741,7 @@ async function loadHome() {
         </div>`;
       }).join('');
     } else {
-      htmlRank = '<div style="font-size:12px;color:var(--t3);padding:.5rem 0">Aún no hay proveedores. ¡Sé el primero en ofrecer un servicio!</div>';
+      htmlRank = '<div style="font-size:12px;color:var(--t3);padding:.5rem 0">Aún no hay proveedores con servicios completados. ¡El ranking se llenará conforme se realicen trabajos!</div>';
     }
     if(rk) rk.innerHTML = htmlRank;
     if(rkMovil) rkMovil.innerHTML = htmlRank;
@@ -1095,19 +1098,26 @@ async function openConvo(id) {
     if(badge) badge.remove();
   }
   document.querySelectorAll('.cvo').forEach(el=>{ if(!el.getAttribute('onclick')?.includes(id)) el.classList.remove('on'); });
-  // Marcar como leídos PRIMERO (rápido) y actualizar el badge global
+  // Mostrar "cargando" al instante para que se sienta rápido
+  const cm = document.getElementById('cm');
+  if(cm) cm.innerHTML='<div class="loading" style="flex:1;display:flex;align-items:center;justify-content:center"><span class="spin"></span></div>';
+  // Marcar como leídos (en paralelo, sin esperar)
   sb.from('mensajes').update({leido:true}).eq('conversacion_id',id).neq('autor_id',G.u.id).eq('leido',false).then(()=>{ actualizarNotif(); });
+  // Traer la conversación
   const {data:conv} = await sb.from('conversaciones').select('*').eq('id',id).single();
   if(!conv){document.getElementById('cm').innerHTML='<div style="display:flex;align-items:center;justify-content:center;flex:1;color:var(--t3);font-size:13px;padding:2rem">Esta conversación ya no existe.</div>';return;}
   const otroId = conv.interesado_id===G.u.id ? conv.cliente_id : conv.interesado_id;
-  let otro = null;
-  if(otroId){
-    const {data:u} = await sb.from('usuarios').select('nombre,apellidos,email,whatsapp,ubicacion').eq('id',otroId).single();
-    otro = u;
-  }
+  // Traer datos del otro Y mensajes Y ocultos EN PARALELO (mucho más rápido)
+  const [resOtro, resMsgs, resOcultos] = await Promise.all([
+    otroId ? sb.from('usuarios').select('nombre,apellidos,email,whatsapp,ubicacion').eq('id',otroId).single() : Promise.resolve({data:null}),
+    sb.from('mensajes').select('*').eq('conversacion_id',id).order('created_at',{ascending:true}),
+    sb.from('chats_ocultos').select('oculto_desde').eq('usuario_id',G.u.id).eq('conversacion_id',id).maybeSingle()
+  ]);
+  const otro = resOtro.data;
   G.convData = {conv, otro, id};
-  await renderMensajes(id);
-  // Suscripción realtime: escucha mensajes nuevos de esta conversación
+  // Renderizar con los datos ya traídos (sin más consultas)
+  pintarMensajes(id, conv, otro, resMsgs.data, resOcultos.data);
+  // Suscripción realtime
   if(G.msgChannel){ sb.removeChannel(G.msgChannel); }
   G.msgChannel = sb.channel('msgs-'+id)
     .on('postgres_changes', {event:'*', schema:'public', table:'mensajes', filter:'conversacion_id=eq.'+id}, () => {
@@ -1155,15 +1165,23 @@ async function refrescarListaConvos() {
 }
 
 async function renderMensajes(id) {
-  let {conv, otro} = G.convData||{};
-  // Traer la conversación fresca (por si el monto_acordado cambió al aceptar un trato)
-  const {data:convFresca} = await sb.from('conversaciones').select('*').eq('id',id).single();
-  if(convFresca){ conv = convFresca; if(G.convData) G.convData.conv = convFresca; }
-  let {data:msgs} = await sb.from('mensajes').select('*').eq('conversacion_id',id).order('created_at',{ascending:true});
+  // Trae datos frescos (usada por el realtime) y delega el pintado
+  const [resConv, resMsgs, resOcultos] = await Promise.all([
+    sb.from('conversaciones').select('*').eq('id',id).single(),
+    sb.from('mensajes').select('*').eq('conversacion_id',id).order('created_at',{ascending:true}),
+    sb.from('chats_ocultos').select('oculto_desde').eq('usuario_id',G.u.id).eq('conversacion_id',id).maybeSingle()
+  ]);
+  let conv = resConv.data;
+  if(conv && G.convData) G.convData.conv = conv;
+  const otro = G.convData?.otro;
+  pintarMensajes(id, conv, otro, resMsgs.data, resOcultos.data);
+}
+
+function pintarMensajes(id, conv, otro, msgsData, ocData) {
+  let msgs = msgsData || [];
   // Si este usuario ocultó el chat antes, mostrar solo mensajes posteriores a esa fecha
-  const {data:oc} = await sb.from('chats_ocultos').select('oculto_desde').eq('usuario_id',G.u.id).eq('conversacion_id',id).maybeSingle();
-  if(oc && oc.oculto_desde){
-    msgs = (msgs||[]).filter(m=> new Date(m.created_at) > new Date(oc.oculto_desde));
+  if(ocData && ocData.oculto_desde){
+    msgs = msgs.filter(m=> new Date(m.created_at) > new Date(ocData.oculto_desde));
   }
   const nombreOtro = otro ? (otro.nombre||'Usuario') : 'Usuario';
   const cm = document.getElementById('cm');
@@ -1171,7 +1189,6 @@ async function renderMensajes(id) {
   const esAdmin = G.u.email===ADMIN_EMAIL;
   // Quien PAGA (y por tanto marca completado): en un pedido es el dueño (cliente_id);
   // en un servicio ofrecido es quien contactó (interesado_id).
-  const esPedido = !!conv?.pedido_id;
   const quienPagaId = esPedido ? conv?.cliente_id : conv?.interesado_id;
   const yoPago = G.u.id === quienPagaId;
   const verContacto = (hayAcuerdo || esAdmin) && otro;
@@ -1205,8 +1222,9 @@ async function renderMensajes(id) {
           }</div>`;
         }
         if(m.tipo==='sistema') return `<div class="msys">${m.contenido}</div>`;
-        if(m.tipo==='imagen') return `<div class="msg ${m.autor_id===G.u.id?'mo':'mi'}" style="padding:4px"><img src="${m.contenido}" style="max-width:200px;max-height:240px;border-radius:10px;display:block;cursor:pointer" onclick="window.open('${m.contenido}','_blank')"/><div class="mt">${timeAgo(m.created_at)}</div></div>`;
-        return `<div class="msg ${m.autor_id===G.u.id?'mo':'mi'}">${m.contenido}<div class="mt">${timeAgo(m.created_at)}</div></div>`;
+        const checks = m.autor_id===G.u.id ? `<span class="mcheck ${m.leido?'leido':''}">${m.leido?'✓✓':'✓'}</span>` : '';
+        if(m.tipo==='imagen') return `<div class="msg ${m.autor_id===G.u.id?'mo':'mi'}" style="padding:4px"><img src="${m.contenido}" style="max-width:200px;max-height:240px;border-radius:10px;display:block;cursor:pointer" onclick="window.open('${m.contenido}','_blank')"/><div class="mt">${timeAgo(m.created_at)} ${checks}</div></div>`;
+        return `<div class="msg ${m.autor_id===G.u.id?'mo':'mi'}">${m.contenido}<div class="mt">${timeAgo(m.created_at)} ${checks}</div></div>`;
       }).join('')}
     </div>
     ${conv?.status==='cerrada_moderacion'
