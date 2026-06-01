@@ -783,6 +783,7 @@ async function verPerfilPublico(userId){
       <div style="font-size:18px;font-weight:600;color:var(--t)">${nombre}</div>
       ${total>0?`<div style="margin-top:6px"><span class="stars" style="font-size:16px">${'★'.repeat(Math.round(prom))}${'☆'.repeat(5-Math.round(prom))}</span> <span style="color:var(--t2);font-size:13px">${prom.toFixed(1)} · ${total} ${total===1?'reseña':'reseñas'}</span></div>`:'<div style="margin-top:6px;color:var(--t3);font-size:13px">Aún sin reseñas</div>'}
       ${u?.bio?`<div style="margin-top:12px;font-size:13px;color:var(--t2);line-height:1.5;font-style:italic">"${u.bio}"</div>`:''}
+      ${userId!==G.u.id?`<button class="btn bg_" style="margin-top:14px;padding:10px 24px" onclick="contactarDirecto('${userId}','${nombre.replace(/'/g,"")}')">💬 Contactar</button>`:'<div style="margin-top:14px;font-size:12px;color:var(--t3)">Este es tu perfil</div>'}
     </div>
     ${servs&&servs.length>0?`<div class="prof-sec"><div style="font-size:13px;font-weight:500;margin-bottom:10px">🛠️ Servicios que ofrece</div>${servs.map(s=>`<div style="padding:8px 0;border-bottom:1px solid var(--bd)"><div style="font-size:13px;color:var(--g);font-weight:500">${s.categoria}</div>${s.descripcion?`<div style="font-size:12px;color:var(--t2);margin-top:2px">${s.descripcion}</div>`:''}</div>`).join('')}</div>`:''}
     <div class="prof-sec">
@@ -838,6 +839,22 @@ async function contactarPedido(pedidoId, duenoId, titulo) {
   if(exist){convoId=exist.id;}
   else {
     const {data:nueva} = await sb.from('conversaciones').insert({pedido_id:pedidoId,cliente_id:duenoId,interesado_id:G.u.id,titulo_ref:titulo,status:'activa'}).select().single();
+    convoId=nueva.id;
+  }
+  go('chat');
+  setTimeout(()=>openConvo(convoId),300);
+}
+
+async function contactarDirecto(otroUserId, nombreOtro) {
+  if(!G.u){G._d='chat';go('login');return;}
+  if(otroUserId===G.u.id){alert('Este es tu propio perfil.');return;}
+  // Buscar conversación directa previa (sin pedido ni proveedor) entre estos dos
+  const {data:e1} = await sb.from('conversaciones').select('id').eq('cliente_id',otroUserId).eq('interesado_id',G.u.id).is('pedido_id',null).is('proveedor_id',null).maybeSingle();
+  let convoId;
+  if(e1){ convoId=e1.id; }
+  else {
+    // El que contacta es el interesado (cliente que paga); el otro es quien prestará el servicio
+    const {data:nueva} = await sb.from('conversaciones').insert({cliente_id:otroUserId,interesado_id:G.u.id,titulo_ref:'Contacto directo con '+nombreOtro,status:'activa'}).select().single();
     convoId=nueva.id;
   }
   go('chat');
@@ -1038,6 +1055,7 @@ async function renderMensajes(id) {
       </div>
     </div>
     ${contactoHTML}
+    ${!hayAcuerdo&&conv?.status!=='cerrada_moderacion'?`<div style="background:var(--abg);border:1px solid var(--amb);border-radius:8px;padding:7px 10px;margin:0 1rem 8px;font-size:11px;color:var(--amb)">🔒 Por seguridad, no compartas números ni contactos aquí. Se comparten solos al cerrar el trato. Intentar evadirlo cierra la conversación.</div>`:''}
     <div class="msgs" id="msgs-box">
       ${(msgs||[]).map(m=>{
         if(m.tipo==='deal') {
@@ -1055,13 +1073,15 @@ async function renderMensajes(id) {
         return `<div class="msg ${m.autor_id===G.u.id?'mo':'mi'}">${m.contenido}<div class="mt">${timeAgo(m.created_at)}</div></div>`;
       }).join('')}
     </div>
-    <div class="cinpr">
+    ${conv?.status==='cerrada_moderacion'
+      ? `<div class="cinpr" style="justify-content:center"><div style="font-size:12px;color:var(--red);text-align:center;padding:4px">⛔ Conversación cerrada por moderación. No se pueden enviar más mensajes.</div></div>`
+      : `<div class="cinpr">
       <input class="cinp" id="cinp" placeholder="Escribe un mensaje..." onkeydown="if(event.key==='Enter')sendMsg('${id}')" />
       <input type="file" id="fotochat" accept="image/*" style="display:none" onchange="enviarFotoChat('${id}',this)" />
       <button class="btn bog bsm" onclick="document.getElementById('fotochat').click()" title="Enviar foto">📷</button>
       ${!hayAcuerdo?`<button class="btn bog bsm" onclick="pDeal('${id}')">Proponer precio</button>`:''}
       <button class="btn bg_ bsm" onclick="sendMsg('${id}')">➤</button>
-    </div>`;
+    </div>`}`;
   const box = document.getElementById('msgs-box');
   if(box) box.scrollTop = box.scrollHeight;
 }
@@ -1115,22 +1135,54 @@ async function subirImagen(file) {
   return data.publicUrl;
 }
 
-async function enviarFotoChat(convoId, inputEl) {
-  const file = inputEl.files[0];
-  if(!file) return;
-  inputEl.value='';
-  const url = await subirImagen(file);
-  if(!url) return;
-  await sb.from('mensajes').insert({conversacion_id:convoId,autor_id:G.u.id,tipo:'imagen',contenido:url,leido:false});
-  renderMensajes(convoId);
+// Detecta números de teléfono o intentos de compartir contacto
+function detectarContacto(texto){
+  const t = texto.toLowerCase();
+  // 1) Secuencias de 6+ dígitos (con o sin espacios/guiones entre ellos)
+  const soloDigitos = t.replace(/[\s\-\.\(\)]/g,'');
+  if(/\d{6,}/.test(soloDigitos)) return true;
+  // 2) Números escritos con palabras (nueve cinco uno...) - 4+ números seguidos en palabras
+  const palabras = ['cero','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve'];
+  let seguidos=0, maxSeguidos=0;
+  for(const w of t.split(/\s+/)){
+    if(palabras.includes(w)){ seguidos++; maxSeguidos=Math.max(maxSeguidos,seguidos); } else seguidos=0;
+  }
+  if(maxSeguidos>=4) return true;
+  // 3) Menciones de otras apps/redes para contactar
+  if(/(whats?app|wsp|whatts|face(book)?|instagram|telegram|ll[aá]mame|mi numero|mi n[uú]mero|cel(ular)?\s*es)/i.test(t)) return true;
+  return false;
 }
 
 async function sendMsg(convoId) {
   const inp = document.getElementById('cinp');
   const txt = inp.value.trim();
   if(!txt) return;
+  if(detectarContacto(txt)){
+    G.avisoContacto = G.avisoContacto || {};
+    G.avisoContacto[convoId] = true; // marcar que ya se advirtió en esta conversación
+    alert('⚠️ Por tu seguridad y para mantener la garantía de YoLoHago, no se permite compartir números de teléfono ni contactos externos en el chat.\n\nTodo acuerdo debe cerrarse dentro de la app. Los datos de contacto se comparten automáticamente al aceptar un trato.\n\n⛔ Si intentas enviar tu número por foto u otro medio, la conversación será cerrada.');
+    return; // no se envía el mensaje
+  }
   inp.value='';
   await sb.from('mensajes').insert({conversacion_id:convoId,autor_id:G.u.id,tipo:'texto',contenido:txt,leido:false});
+  renderMensajes(convoId);
+}
+
+async function enviarFotoChat(convoId, inputEl) {
+  const file = inputEl.files[0];
+  if(!file) return;
+  inputEl.value='';
+  // Si ya se advirtió por intento de compartir contacto, enviar foto se considera evasión
+  if(G.avisoContacto && G.avisoContacto[convoId]){
+    alert('⛔ Esta conversación se ha cerrado porque se detectó un intento de compartir contacto fuera de la app, tras una advertencia previa.\n\nRecuerda: todos los acuerdos deben cerrarse dentro de YoLoHago.');
+    await sb.from('mensajes').insert({conversacion_id:convoId,autor_id:G.u.id,tipo:'sistema',contenido:'⛔ Conversación cerrada: intento de compartir contacto fuera de la app tras una advertencia.'});
+    await sb.from('conversaciones').update({status:'cerrada_moderacion'}).eq('id',convoId);
+    renderMensajes(convoId);
+    return;
+  }
+  const url = await subirImagen(file);
+  if(!url) return;
+  await sb.from('mensajes').insert({conversacion_id:convoId,autor_id:G.u.id,tipo:'imagen',contenido:url,leido:false});
   renderMensajes(convoId);
 }
 
